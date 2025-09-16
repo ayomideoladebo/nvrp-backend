@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - NV:RP Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --font-heading: 'Audiowide', sans-serif; --font-body: 'Rajdhani', sans-serif; --color-green-accent: #39FF14; }
+        body { font-family: var(--font-body); }
+        h1, h2, h3, h4 { font-family: var(--font-heading); }
+        .text-glow-green { text-shadow: 0 0 5px var(--color-green-accent), 0 0 10px var(--color-green-accent); }
+        body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: linear-gradient(45deg, #0d1f02, #011424, #0d1f02); background-size: 200% 200%; animation: gradientShift 20s ease infinite; }
+        @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .status-select.processed { @apply bg-green-500/10 text-green-400 border-green-500/30; }
+        .status-select.pending { @apply bg-yellow-500/10 text-yellow-400 border-yellow-500/30; }
+    </style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen">
+    <header class="sticky top-0 z-50 bg-black/50 backdrop-blur-lg border-b border-gray-700/50">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <h1 class="text-3xl font-black">NV:RP Dashboard</h1>
+            <button id="logout-btn" class="bg-red-600 text-white px-5 py-2 rounded-md font-bold text-sm hover:bg-red-700">LOGOUT</button>
+        </div>
+    </header>
+
+    <main class="flex-grow py-12">
+        <div class="container mx-auto px-6">
+            <h2 class="text-4xl font-extrabold text-glow-green mb-8">Donation History</h2>
+            <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-800">
+                        <tr>
+                            <th class="p-4 text-sm font-semibold text-green-400 uppercase">Date</th>
+                            <th class="p-4 text-sm font-semibold text-green-400 uppercase">Discord User</th>
+                            <th class="p-4 text-sm font-semibold text-green-400 uppercase">In-Game Name</th>
+                            <th class="p-4 text-sm font-semibold text-green-400 uppercase">Tier & Amount</th>
+                            <th class="p-4 text-sm font-semibold text-green-400 uppercase">Screenshot</th>
+                            <th class="p-4 text-sm font-semibold text-green-400 uppercase">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="donations-tbody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Auth check
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'admin.html';
+                return;
+            }
+
+            const logoutBtn = document.getElementById('logout-btn');
+            logoutBtn.addEventListener('click', () => {
+                localStorage.removeItem('isLoggedIn');
+                window.location.href = 'admin.html';
+            });
+            
+            const donationsTbody = document.getElementById('donations-tbody');
+
+            const fetchDonations = async () => {
+                try {
+                    const response = await fetch('/api/donations');
+                    const donations = await response.json();
+                    
+                    donationsTbody.innerHTML = ''; // Clear existing rows
+                    if (donations.length === 0) {
+                        donationsTbody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-400">No donations found.</td></tr>';
+                        return;
+                    }
+
+                    donations.forEach(d => {
+                        const row = document.createElement('tr');
+                        row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
+                        row.innerHTML = `
+                            <td class="p-4">${d.date}</td>
+                            <td class="p-4">${d.discordUser}</td>
+                            <td class="p-4">${d.inGameName}</td>
+                            <td class="p-4 font-semibold">${d.tier} <span class="text-cyan-400 font-bold">${d.price}</span></td>
+                            <td class="p-4"><a href="${d.screenshotUrl}" target="_blank" class="text-cyan-400 hover:underline">View Image</a></td>
+                            <td class="p-4">
+                                <select class="status-select w-full p-2 rounded-md border text-sm font-semibold bg-gray-700 ${d.status}" data-id="${d.id}">
+                                    <option value="pending" ${d.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                    <option value="processed" ${d.status === 'processed' ? 'selected' : ''}>Processed</option>
+                                </select>
+                            </td>
+                        `;
+                        donationsTbody.appendChild(row);
+                    });
+                } catch (error) {
+                    console.error('Failed to fetch donations:', error);
+                    donationsTbody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-red-400">Failed to load data.</td></tr>';
+                }
+            };
+
+            donationsTbody.addEventListener('change', async (e) => {
+                if (e.target.classList.contains('status-select')) {
+                    const id = e.target.dataset.id;
+                    const status = e.target.value;
+                    try {
+                        await fetch(`/api/donations/${id}/status`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status })
+                        });
+                        fetchDonations(); // Refresh the list
+                    } catch (error) {
+                        console.error('Failed to update status:', error);
+                        alert('Failed to update status.');
+                    }
+                }
+            });
+
+            fetchDonations();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Nigerian Vibe RP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --font-heading: 'Audiowide', sans-serif; --font-body: 'Rajdhani', sans-serif; --color-green-primary: #008000; --color-green-accent: #39FF14; --color-cyan-accent: #00FFFF; }
+        body { font-family: var(--font-body); }
+        h1, h2, h3, h4 { font-family: var(--font-heading); }
+        .text-glow-green { text-shadow: 0 0 5px var(--color-green-accent), 0 0 10px var(--color-green-accent), 0 0 15px var(--color-green-accent); }
+        body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: linear-gradient(45deg, #0d1f02, #011424, #0d1f02); background-size: 200% 200%; animation: gradientShift 20s ease infinite; }
+        @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-200 flex flex-col min-h-screen">
+    <header class="bg-black/30 backdrop-blur-lg border-b border-gray-700/50">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-3xl font-black text-white">NV:RP Admin Panel</h1>
+            <a href="index.html" class="border-2 border-[var(--color-cyan-accent)] text-[var(--color-cyan-accent)] px-5 py-2 rounded-md font-bold text-sm hover:bg-[var(--color-cyan-accent)] hover:text-black transition-all">BACK TO HOME</a>
+        </div>
+    </header>
+    <main class="flex-grow flex items-center justify-center">
+        <div class="container mx-auto px-6 max-w-md">
+            <div class="bg-black/20 p-8 rounded-lg border border-gray-700">
+                <h2 class="text-3xl font-bold text-center text-[var(--color-green-accent)] text-glow-green">STAFF LOGIN</h2>
+                <form id="login-form" class="mt-8 space-y-6">
+                    <div>
+                        <label for="username" class="block text-sm font-semibold text-gray-300">Username</label>
+                        <input type="text" id="username" required class="w-full mt-2 bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-green-accent)] focus:outline-none transition-all">
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-semibold text-gray-300">Password</label>
+                        <input type="password" id="password" required class="w-full mt-2 bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-green-accent)] focus:outline-none transition-all">
+                    </div>
+                    <button type="submit" class="w-full bg-[var(--color-green-primary)] text-black py-3 rounded-md font-bold text-lg hover:bg-[var(--color-green-accent)] transition-all">SECURE LOGIN</button>
+                </form>
+            </div>
+        </div>
+    </main>
+    <footer class="text-center text-gray-600 py-6"><p>&copy; 2025 Nigerian Vibe RP.</p></footer>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.setItem('isLoggedIn', 'true');
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('An error occurred. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>

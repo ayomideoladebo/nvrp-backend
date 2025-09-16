@@ -1,0 +1,10 @@
+{
+  "stats": {
+    "yesterday_peak": 0
+  },
+  "announcement": {
+    "text": "Welcome to the live stream!",
+    "active": false
+  },
+  "daily_stats": {}
+}
