@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 
 // --- CONFIGURATION ---
 const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "password"; // IMPORTANT: Change this in a real application
+const ADMIN_PASSWORD = "password1234"; // IMPORTANT: Change this in a real application
 
 // --- MIDDLEWARE ---
 app.use(cors()); // Enable Cross-Origin Resource Sharing
