@@ -48,6 +48,8 @@
     </main>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const backendUrl = "https://nigeria-vibe-backend.onrender.com"; // <-- YOUR LIVE BACKEND URL
+
             // Auth check
             if (localStorage.getItem('isLoggedIn') !== 'true') {
                 window.location.href = 'admin.html';
@@ -64,7 +66,7 @@
 
             const fetchDonations = async () => {
                 try {
-                    const response = await fetch('/api/donations');
+                    const response = await fetch(`${backendUrl}/api/donations`);
                     const donations = await response.json();
                     
                     donationsTbody.innerHTML = ''; // Clear existing rows
@@ -81,7 +83,7 @@
                             <td class="p-4">${d.discordUser}</td>
                             <td class="p-4">${d.inGameName}</td>
                             <td class="p-4 font-semibold">${d.tier} <span class="text-cyan-400 font-bold">${d.price}</span></td>
-                            <td class="p-4"><a href="${d.screenshotUrl}" target="_blank" class="text-cyan-400 hover:underline">View Image</a></td>
+                            <td class="p-4"><a href="${backendUrl}${d.screenshotUrl}" target="_blank" class="text-cyan-400 hover:underline">View Image</a></td>
                             <td class="p-4">
                                 <select class="status-select w-full p-2 rounded-md border text-sm font-semibold bg-gray-700 ${d.status}" data-id="${d.id}">
                                     <option value="pending" ${d.status === 'pending' ? 'selected' : ''}>Pending</option>
@@ -102,7 +104,7 @@
                     const id = e.target.dataset.id;
                     const status = e.target.value;
                     try {
-                        await fetch(`/api/donations/${id}/status`, {
+                        await fetch(`${backendUrl}/api/donations/${id}/status`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ status })

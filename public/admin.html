@@ -47,9 +47,10 @@
             e.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
+            const backendUrl = "https://nigeria-vibe-backend.onrender.com"; // <-- YOUR LIVE BACKEND URL
 
             try {
-                const response = await fetch('/api/login', {
+                const response = await fetch(`${backendUrl}/api/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
