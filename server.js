@@ -8,6 +8,10 @@ const mysql = require('mysql2/promise');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// --- IMPORTANT: PASTE YOUR DISCORD WEBHOOK URLS HERE ---
+const DONATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014006836199526/OE4J0sWbDSxcePTAH0qgE8JKa5BDTS5Zj0YpjNcTu55dcA5oI3j7WVUM7zzbasF-GHK5";
+const APPLICATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014141452386405/6zo3kwZ24-RakI_btJN8kiegGnuwkSvN5SPmBeQJ9j_Wv2IsE3mpZGLf4KgOY_h1Z2X3";
+
 // --- MONGODB ATLAS CONNECTION (for website data) ---
 // IMPORTANT: Replace <db_password> with your actual database password
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp"; 
@@ -61,6 +65,31 @@ function getFactionName(factionId) {
     }
 }
 
+// Helper function to send notifications to Discord
+async function sendToDiscord(webhookUrl, embed) {
+    if (!webhookUrl || webhookUrl.includes("YOUR_")) {
+        // Don't send if the URL is a placeholder or empty
+        console.log("Discord Webhook URL is not configured. Skipping notification.");
+        return;
+    }
+    try {
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: "NV:RP Alerter",
+                avatar_url: "https://i.imgur.com/4M34hi2.png", // A generic bot avatar
+                embeds: [embed]
+            })
+        });
+        if (!response.ok) {
+            console.error(`Error sending to Discord: ${response.status} ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error("Error sending to Discord:", error.message);
+    }
+}
+
 // --- CONFIGURATION & MIDDLEWARE ---
 const ADMIN_USERNAME = "adminnvrp";
 const ADMIN_PASSWORD = "password1234";
@@ -94,9 +123,35 @@ app.post('/api/donations', (req, res) => {
     upload(req, res, async (err) => {
         if (err) return res.status(400).json({ message: err });
         if (!req.file) return res.status(400).json({ message: 'Error: No File Selected!' });
+
         const { tier, price, discordUser, inGameName } = req.body;
-        const newDonation = { tier, price: `₦${parseInt(price).toLocaleString()}`, discordUser, inGameName, screenshotUrl: `/uploads/${req.file.filename}`, date: new Date(), status: 'pending' };
+        const newDonation = {
+            tier,
+            price: `₦${parseInt(price).toLocaleString()}`,
+            discordUser,
+            inGameName,
+            screenshotUrl: `/uploads/${req.file.filename}`,
+            date: new Date(),
+            status: 'pending'
+        };
+        
         await db.collection('donations').insertOne(newDonation);
+
+        // Send Discord Notification
+        const donationEmbed = {
+            title: "💰 New Donation Submitted!",
+            color: 0xFFD700, // Gold
+            fields: [
+                { name: "In-Game Name", value: inGameName, inline: true },
+                { name: "Discord User", value: discordUser, inline: true },
+                { name: "Tier", value: tier, inline: true },
+                { name: "Amount", value: `₦${parseInt(price).toLocaleString()}`, inline: true }
+            ],
+            footer: { text: "Please verify the payment in the admin dashboard." },
+            timestamp: new Date().toISOString()
+        };
+        sendToDiscord(DONATIONS_WEBHOOK_URL, donationEmbed);
+
         res.status(201).json({ message: 'Donation submitted successfully!' });
     });
 });
@@ -113,14 +168,31 @@ app.put('/api/donations/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     if (!ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid ID format.' });
+    
     await db.collection('donations').updateOne({ _id: new ObjectId(id) }, { $set: { status: status } });
     res.json({ message: 'Status updated successfully' });
 });
 
 // Submit a new waitlist application
 app.post('/api/waitlist', async (req, res) => {
+    const { discordUser, inGameName, age } = req.body;
     const newApplication = { date: new Date(), ...req.body };
     await db.collection('waitlist').insertOne(newApplication);
+
+    // Send Discord Notification
+    const applicationEmbed = {
+        title: "📝 New Player Application!",
+        color: 0x00BFFF, // Deep sky blue
+        fields: [
+            { name: "In-Game Name", value: inGameName, inline: true },
+            { name: "Discord User", value: discordUser, inline: true },
+            { name: "Referrer", value: age, inline: true }
+        ],
+        footer: { text: "Please review the full application in the dashboard." },
+        timestamp: new Date().toISOString()
+    };
+    sendToDiscord(APPLICATIONS_WEBHOOK_URL, applicationEmbed);
+
     res.status(201).json({ message: 'Application submitted successfully!' });
 });
 
@@ -141,7 +213,7 @@ app.get('/api/dashboard-stats', async (req, res) => {
     res.json({ totalPlayers, playersToday, totalDonations, pendingDonations });
 });
 
-// UPDATED: PLAYER LOOKUP API ROUTE
+// Player Lookup API Route
 app.get('/api/player/:name', async (req, res) => {
     const playerName = req.params.name;
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
