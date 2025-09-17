@@ -13,7 +13,6 @@
         .text-glow-green { text-shadow: 0 0 5px var(--color-green-accent), 0 0 10px var(--color-green-accent); }
         .status-select.processed { @apply bg-green-500/10 text-green-400 border-green-500/30; }
         .status-select.pending { @apply bg-yellow-500/10 text-yellow-400 border-yellow-500/30; }
-        /* Sidebar styles */
         #sidebar { transition: transform 0.3s ease-in-out; }
         #main-content { transition: margin-left 0.3s ease-in-out; }
         .sidebar-open #sidebar { transform: translateX(0); }
@@ -33,9 +32,13 @@
                 <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                 Dashboard
             </a>
+             <a href="#lookup" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                Player Lookup
+            </a>
             <a href="#players" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
                 <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                Players
+                Applications
             </a>
             <a href="#donations" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
                 <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1m0 1V4m0 2v1m0 0v1m-6 6h12M7 16a5 5 0 01-.894-9.902l-1.01-1.01A7 7 0 005 16m14 0a7 7 0 00-4.096-6.413l-1.01 1.01A5 5 0 0117 16"/></svg>
@@ -53,55 +56,38 @@
     <div id="main-content" class="md:ml-64">
         <header class="md:hidden sticky top-0 bg-gray-900/80 backdrop-blur-sm p-4 flex justify-between items-center">
             <h1 class="text-xl font-black text-[var(--color-green-accent)]">NV:RP Admin</h1>
-            <button id="menu-btn">
-                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
-            </button>
+            <button id="menu-btn"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg></button>
         </header>
 
         <main class="p-6 md:p-12">
             <section id="dashboard" class="page-content">
                 <h2 class="text-4xl font-extrabold text-glow-green mb-8">Dashboard</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Total Players</p><p id="total-players" class="text-4xl font-bold">0</p></div>
-                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Players Today</p><p id="players-today" class="text-4xl font-bold">0</p></div>
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Total Applicants</p><p id="total-players" class="text-4xl font-bold">0</p></div>
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Applicants Today</p><p id="players-today" class="text-4xl font-bold">0</p></div>
                     <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Total Donations</p><p id="total-donations" class="text-4xl font-bold">0</p></div>
                     <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Pending Donations</p><p id="pending-donations" class="text-4xl font-bold text-yellow-400">0</p></div>
                 </div>
             </section>
+            
+            <section id="lookup" class="page-content hidden">
+                <h2 class="text-4xl font-extrabold text-glow-green mb-8">Player In-Game Lookup</h2>
+                <form id="lookup-form" class="flex items-center gap-4 mb-8">
+                    <input type="text" id="player-name-input" placeholder="Enter In-Game Name (e.g., FirstName_LastName)" required class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none">
+                    <button type="submit" class="bg-[var(--color-cyan-accent)] text-black px-6 py-3 rounded-md font-bold hover:bg-[var(--color-cyan-accent)]/80 flex-shrink-0">Search</button>
+                </form>
+                <div id="lookup-results" class="hidden">
+                    </div>
+            </section>
 
             <section id="players" class="page-content hidden">
                 <h2 class="text-4xl font-extrabold text-glow-green mb-8">Player Applications</h2>
-                <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto">
-                    <table class="w-full text-left min-w-[800px]">
-                        <thead class="bg-gray-800">
-                            <tr>
-                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Submitted</th>
-                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Discord & In-Game</th>
-                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Age</th>
-                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Answers</th>
-                            </tr>
-                        </thead>
-                        <tbody id="players-tbody"></tbody>
-                    </table>
-                </div>
+                <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto"><table class="w-full text-left min-w-[800px]"><thead class="bg-gray-800"><tr><th class="p-4 text-sm font-semibold text-green-400 uppercase">Submitted</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Discord & In-Game</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Age</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Answers</th></tr></thead><tbody id="players-tbody"></tbody></table></div>
             </section>
 
             <section id="donations" class="page-content hidden">
                 <h2 class="text-4xl font-extrabold text-glow-green mb-8">Donation History</h2>
-                <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto">
-                    <table class="w-full text-left min-w-[800px]">
-                        <thead class="bg-gray-800">
-                            <tr>
-                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Date</th>
-                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Discord & In-Game</th>
-                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Tier & Amount</th>
-                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Screenshot</th>
-                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="donations-tbody"></tbody>
-                    </table>
-                </div>
+                <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto"><table class="w-full text-left min-w-[800px]"><thead class="bg-gray-800"><tr><th class="p-4 text-sm font-semibold text-green-400 uppercase">Date</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Discord & In-Game</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Tier & Amount</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Screenshot</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Status</th></tr></thead><tbody id="donations-tbody"></tbody></table></div>
             </section>
         </main>
     </div>
@@ -111,14 +97,8 @@
             const backendUrl = "https://nigeria-vibe-backend.onrender.com";
 
             // --- AUTHENTICATION ---
-            if (localStorage.getItem('isLoggedIn') !== 'true') {
-                window.location.href = 'admin.html';
-                return;
-            }
-            document.getElementById('logout-btn').addEventListener('click', () => {
-                localStorage.removeItem('isLoggedIn');
-                window.location.href = 'admin.html';
-            });
+            if (localStorage.getItem('isLoggedIn') !== 'true') { window.location.href = 'admin.html'; return; }
+            document.getElementById('logout-btn').addEventListener('click', () => { localStorage.removeItem('isLoggedIn'); window.location.href = 'admin.html'; });
 
             // --- MOBILE SIDEBAR ---
             const menuBtn = document.getElementById('menu-btn');
@@ -130,28 +110,17 @@
             // --- NAVIGATION & PAGE DISPLAY ---
             const navLinks = document.querySelectorAll('.nav-link');
             const pages = document.querySelectorAll('.page-content');
-            
             function showPage(hash) {
                 const targetId = hash.substring(1) || 'dashboard';
                 pages.forEach(p => p.classList.add('hidden'));
                 document.getElementById(targetId)?.classList.remove('hidden');
-                navLinks.forEach(link => {
-                    link.classList.toggle('bg-gray-800', link.hash === hash);
-                });
-                body.classList.remove('sidebar-open'); // Close sidebar on nav
+                navLinks.forEach(link => { link.classList.toggle('bg-gray-800', link.hash === hash); });
+                body.classList.remove('sidebar-open');
             }
-
-            navLinks.forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    window.location.hash = link.hash;
-                });
-            });
-
+            navLinks.forEach(link => { link.addEventListener('click', (e) => { e.preventDefault(); window.location.hash = link.hash; }); });
             window.addEventListener('hashchange', () => showPage(window.location.hash));
-            showPage(window.location.hash || '#dashboard'); // Initial page load
 
-            // --- DATA FETCHING ---
+            // --- DATA FETCHING FUNCTIONS ---
             const fetchDashboardStats = async () => {
                 try {
                     const res = await fetch(`${backendUrl}/api/dashboard-stats`);
@@ -169,37 +138,18 @@
                     const res = await fetch(`${backendUrl}/api/waitlist`);
                     const players = await res.json();
                     tbody.innerHTML = '';
-                    if (players.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="4" class="text-center p-8 text-gray-400">No applications found.</td></tr>';
-                        return;
-                    }
+                    if (players.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center p-8 text-gray-400">No applications found.</td></tr>'; return; }
                     players.forEach(p => {
                         const row = document.createElement('tr');
                         row.className = 'border-b border-gray-800';
                         row.innerHTML = `
                             <td class="p-4 whitespace-nowrap">${new Date(p.date).toLocaleString()}</td>
-                            <td class="p-4">
-                                <p class="font-bold">${p.discordUser}</p>
-                                <p class="text-sm text-gray-400">${p.inGameName}</p>
-                            </td>
+                            <td class="p-4"><p class="font-bold">${p.discordUser}</p><p class="text-sm text-gray-400">${p.inGameName}</p></td>
                             <td class="p-4">${p.age}</td>
-                            <td class="p-4 text-sm text-gray-300">
-                                <details>
-                                    <summary class="cursor-pointer hover:text-white">View Answers</summary>
-                                    <div class="mt-2 space-y-2 p-3 bg-gray-800 rounded">
-                                        <p><strong class="text-gray-400">RP Definition:</strong> ${p.rpDefinition}</p>
-                                        <p><strong class="text-gray-400">Powergaming:</strong> ${p.powergaming}</p>
-                                        <p><strong class="text-gray-400">Backstory:</strong> ${p.backstory}</p>
-                                    </div>
-                                </details>
-                            </td>
-                        `;
+                            <td class="p-4 text-sm text-gray-300"><details><summary class="cursor-pointer hover:text-white">View Answers</summary><div class="mt-2 space-y-2 p-3 bg-gray-800 rounded"><p><strong class="text-gray-400">RP Definition:</strong> ${p.rpDefinition}</p><p><strong class="text-gray-400">Powergaming:</strong> ${p.powergaming}</p><p><strong class="text-gray-400">Backstory:</strong> ${p.backstory}</p></div></details></td>`;
                         tbody.appendChild(row);
                     });
-                } catch (error) { 
-                    console.error('Failed to fetch players:', error); 
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center p-8 text-red-400">Failed to load data.</td></tr>';
-                }
+                } catch (error) { tbody.innerHTML = '<tr><td colspan="4" class="text-center p-8 text-red-400">Failed to load data.</td></tr>'; }
             };
             
             const donationsTbody = document.getElementById('donations-tbody');
@@ -208,34 +158,19 @@
                     const response = await fetch(`${backendUrl}/api/donations`);
                     const donations = await response.json();
                     donationsTbody.innerHTML = '';
-                    if (donations.length === 0) {
-                        donationsTbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-400">No donations found.</td></tr>';
-                        return;
-                    }
+                    if (donations.length === 0) { donationsTbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-400">No donations found.</td></tr>'; return; }
                     donations.forEach(d => {
                         const row = document.createElement('tr');
                         row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
                         row.innerHTML = `
                             <td class="p-4 whitespace-nowrap">${new Date(d.date).toLocaleString()}</td>
-                            <td class="p-4">
-                                <p class="font-bold">${d.discordUser}</p>
-                                <p class="text-sm text-gray-400">${d.inGameName}</p>
-                            </td>
+                            <td class="p-4"><p class="font-bold">${d.discordUser}</p><p class="text-sm text-gray-400">${d.inGameName}</p></td>
                             <td class="p-4 font-semibold">${d.tier} <span class="text-[var(--color-cyan-accent)] font-bold">${d.price}</span></td>
                             <td class="p-4"><a href="${backendUrl}${d.screenshotUrl}" target="_blank" class="text-[var(--color-cyan-accent)] hover:underline">View Image</a></td>
-                            <td class="p-4">
-                                <select class="status-select w-full p-2 rounded-md border text-sm font-semibold bg-gray-700 ${d.status}" data-id="${d.id}">
-                                    <option value="pending" ${d.status === 'pending' ? 'selected' : ''}>Pending</option>
-                                    <option value="processed" ${d.status === 'processed' ? 'selected' : ''}>Processed</option>
-                                </select>
-                            </td>
-                        `;
+                            <td class="p-4"><select class="status-select w-full p-2 rounded-md border text-sm font-semibold bg-gray-700 ${d.status}" data-id="${d._id}"><option value="pending" ${d.status === 'pending' ? 'selected' : ''}>Pending</option><option value="processed" ${d.status === 'processed' ? 'selected' : ''}>Processed</option></select></td>`;
                         donationsTbody.appendChild(row);
                     });
-                } catch (error) {
-                    console.error('Failed to fetch donations:', error);
-                    donationsTbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-red-400">Failed to load data.</td></tr>';
-                }
+                } catch (error) { donationsTbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-red-400">Failed to load data.</td></tr>'; }
             };
 
             donationsTbody.addEventListener('change', async (e) => {
@@ -248,15 +183,43 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ status })
                         });
-                        fetchDonations(); // Refresh the list
+                        fetchDonations();
                     } catch (error) { alert('Failed to update status.'); }
                 }
             });
 
-            // --- INITIAL DATA LOAD ---
-            fetchDashboardStats();
-            fetchPlayers();
-            fetchDonations();
+            // --- PLAYER LOOKUP LOGIC ---
+            const lookupForm = document.getElementById('lookup-form');
+            const lookupResultsContainer = document.getElementById('lookup-results');
+            const playerNameInput = document.getElementById('player-name-input');
+            lookupForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const playerName = playerNameInput.value.trim();
+                if (!playerName) return;
+                lookupResultsContainer.classList.remove('hidden');
+                lookupResultsContainer.innerHTML = '<p class="text-center text-lg">Searching...</p>';
+                try {
+                    const response = await fetch(`${backendUrl}/api/player/${playerName}`);
+                    const data = await response.json();
+                    if (!response.ok) { throw new Error(data.message || 'An error occurred'); }
+                    let vehiclesHtml = '<p class="mt-4 text-gray-400">No vehicles found.</p>';
+                    if (data.vehicles && data.vehicles.length > 0) {
+                        vehiclesHtml = `<div class="overflow-x-auto mt-4"><table class="w-full text-left"><thead class="bg-gray-800"><tr><th class="p-3 text-sm font-semibold text-green-400 uppercase">Model ID</th><th class="p-3 text-sm font-semibold text-green-400 uppercase">Tickets</th></tr></thead><tbody>${data.vehicles.map(v => `<tr class="border-b border-gray-800"><td class="p-3">${v.modelid}</td><td class="p-3">${v.tickets}</td></tr>`).join('')}</tbody></table></div>`;
+                    }
+                    lookupResultsContainer.innerHTML = `<div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6"><h3 class="text-2xl font-bold text-white mb-4">Stats for <span class="text-[var(--color-cyan-accent)]">${playerName}</span></h3><div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Level</p><p class="text-2xl font-bold">${data.stats.level}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Hours Played</p><p class="text-2xl font-bold">${data.stats.hours}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Cash</p><p class="text-2xl font-bold text-green-400">$${data.stats.cash.toLocaleString()}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Bank</p><p class="text-2xl font-bold text-green-400">$${data.stats.bank.toLocaleString()}</p></div></div><h4 class="text-xl font-bold text-white mt-6 mb-2">Vehicles</h4>${vehiclesHtml}</div>`;
+                } catch (error) {
+                    lookupResultsContainer.innerHTML = `<p class="text-center text-lg text-red-400">${error.message}</p>`;
+                }
+            });
+
+            // --- INITIAL PAGE LOAD ---
+            const initialLoad = () => {
+                showPage(window.location.hash || '#dashboard');
+                fetchDashboardStats();
+                fetchPlayers();
+                fetchDonations();
+            };
+            initialLoad();
         });
     </script>
 </body>

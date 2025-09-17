@@ -3,17 +3,18 @@ const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
 const { MongoClient } = require('mongodb');
+const mysql = require('mysql2/promise');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// --- IMPORTANT: REPLACE <db_password> WITH YOUR ACTUAL DATABASE PASSWORD ---
-const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:Zxo6U9QOmJw1oReh@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp"; 
+// --- MONGODB ATLAS CONNECTION (for website data) ---
+// IMPORTANT: Replace <db_password> with your actual database password
+const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:<db_password>@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp"; 
 const DB_NAME = "nigeria-vibe-rp";
-
-// --- DATABASE CONNECTION ---
 let db;
-async function connectToDb() {
+
+async function connectToMongo() {
     try {
         const client = new MongoClient(MONGODB_URI);
         await client.connect();
@@ -25,9 +26,32 @@ async function connectToDb() {
     }
 }
 
+// --- SA-MP MYSQL DATABASE CONNECTION (for game data) ---
+// IMPORTANT: Fill in your SA-MP database details below!
+let sampDbPool;
+async function connectToSampDb() {
+    try {
+        sampDbPool = mysql.createPool({
+            host: '217.182.175.212',
+            user: 'u3225914_Ur9bu1nnxG',
+            password: '5WNZTyZSQkbv@ix5kif^AhzF',
+            database: 's3225914_9javiberp',
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0
+        });
+        // Test the connection
+        await sampDbPool.query('SELECT 1');
+        console.log("Successfully connected to SA-MP MySQL Database!");
+    } catch (err) {
+        console.error("Failed to connect to SA-MP MySQL Database", err);
+        process.exit(1);
+    }
+}
+
 // --- CONFIGURATION ---
-const ADMIN_USERNAME = "adminnvrp";
-const ADMIN_PASSWORD = "password1234";
+const ADMIN_USERNAME = "admin";
+const ADMIN_PASSWORD = "password";
 
 // --- MIDDLEWARE ---
 app.use(cors());
@@ -54,6 +78,7 @@ const upload = multer({
     }
 }).single('screenshot');
 
+
 // --- API ROUTES ---
 
 // Admin login
@@ -73,17 +98,13 @@ app.post('/api/donations', (req, res) => {
         if (!req.file) return res.status(400).json({ message: 'Error: No File Selected!' });
 
         const { tier, price, discordUser, inGameName } = req.body;
-        if (!tier || !price || !discordUser || !inGameName) {
-            return res.status(400).json({ message: 'All fields are required.' });
-        }
-
         const newDonation = {
             tier,
             price: `₦${parseInt(price).toLocaleString()}`,
             discordUser,
             inGameName,
             screenshotUrl: `/uploads/${req.file.filename}`,
-            date: new Date(), // Use JS Date object
+            date: new Date(),
             status: 'pending'
         };
         
@@ -103,35 +124,14 @@ app.put('/api/donations/:id/status', async (req, res) => {
     const { ObjectId } = require('mongodb');
     const { id } = req.params;
     const { status } = req.body;
-
-    // Basic validation for ID to prevent crashes
-    if (!ObjectId.isValid(id)) {
-        return res.status(400).json({ message: 'Invalid ID format.' });
-    }
-
-    try {
-        const result = await db.collection('donations').updateOne(
-            { _id: new ObjectId(id) },
-            { $set: { status: status } }
-        );
-
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ message: 'Donation not found.' });
-        }
-        res.json({ message: 'Status updated successfully' });
-    } catch (error) {
-        console.error("Failed to update donation status:", error);
-        res.status(500).json({ message: 'An internal server error occurred.' });
-    }
+    if (!ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid ID format.' });
+    
+    await db.collection('donations').updateOne({ _id: new ObjectId(id) }, { $set: { status: status } });
+    res.json({ message: 'Status updated successfully' });
 });
-
 
 // Submit a new waitlist application
 app.post('/api/waitlist', async (req, res) => {
-    const { discordUser, inGameName, age, rpDefinition, powergaming, backstory } = req.body;
-    if (!discordUser || !inGameName || !age) {
-        return res.status(400).json({ message: 'All application fields are required.' });
-    }
     const newApplication = { date: new Date(), ...req.body };
     await db.collection('waitlist').insertOne(newApplication);
     res.status(201).json({ message: 'Application submitted successfully!' });
@@ -145,23 +145,51 @@ app.get('/api/waitlist', async (req, res) => {
 
 // Get dashboard stats (for admin)
 app.get('/api/dashboard-stats', async (req, res) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const totalPlayers = await db.collection('waitlist').countDocuments();
+    const playersToday = await db.collection('waitlist').countDocuments({ date: { $gte: today } });
+    const totalDonations = await db.collection('donations').countDocuments();
+    const pendingDonations = await db.collection('donations').countDocuments({ status: 'pending' });
+    res.json({ totalPlayers, playersToday, totalDonations, pendingDonations });
+});
+
+// Player Lookup API Route
+app.get('/api/player/:name', async (req, res) => {
+    const playerName = req.params.name;
+
+    if (!sampDbPool) {
+        return res.status(503).json({ message: "Game database is not connected." });
+    }
+
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const [playerRows, vehicleRows] = await Promise.all([
+            sampDbPool.query("SELECT `cash`, `bank`, `level`, `hours` FROM `users` WHERE `username` = ?", [playerName]),
+            sampDbPool.query("SELECT `modelid`, `tickets` FROM `vehicles` WHERE `owner` = ?", [playerName]) // Adjust 'owner' if your column name is different
+        ]);
 
-        const totalPlayers = await db.collection('waitlist').countDocuments();
-        const playersToday = await db.collection('waitlist').countDocuments({ date: { $gte: today } });
-        const totalDonations = await db.collection('donations').countDocuments();
-        const pendingDonations = await db.collection('donations').countDocuments({ status: 'pending' });
+        const playerData = playerRows[0];
 
-        res.json({ totalPlayers, playersToday, totalDonations, pendingDonations });
+        if (!playerData || playerData.length === 0) {
+            return res.status(404).json({ message: "Player not found in the game database." });
+        }
+
+        res.json({
+            stats: playerData[0],
+            vehicles: vehicleRows[0]
+        });
+
     } catch (error) {
-        console.error("Failed to fetch dashboard stats:", error);
-        res.status(500).json({ message: 'An internal server error occurred while fetching stats.' });
+        console.error("Error fetching player data from MySQL:", error);
+        res.status(500).json({ message: "An error occurred while fetching player data." });
     }
 });
 
+
 // --- START SERVER ---
-connectToDb().then(() => {
+// Connect to both databases, then start the Express server
+Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
     app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+}).catch(err => {
+    console.error("Failed to initialize databases and start server.", err);
 });
