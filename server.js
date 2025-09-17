@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 
 // --- MONGODB ATLAS CONNECTION (for website data) ---
 // IMPORTANT: Replace <db_password> with your actual database password
-const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:<db_password>@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp"; 
+const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp"; 
 const DB_NAME = "nigeria-vibe-rp";
 let db;
 
