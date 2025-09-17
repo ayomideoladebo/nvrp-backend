@@ -1,15 +1,33 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const cors = require('cors');
+const { MongoClient } = require('mongodb');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// --- IMPORTANT: REPLACE <db_password> WITH YOUR ACTUAL DATABASE PASSWORD ---
+const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:Zxo6U9QOmJw1oReh@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp"; 
+const DB_NAME = "nigeria-vibe-rp";
+
+// --- DATABASE CONNECTION ---
+let db;
+async function connectToDb() {
+    try {
+        const client = new MongoClient(MONGODB_URI);
+        await client.connect();
+        db = client.db(DB_NAME);
+        console.log("Successfully connected to MongoDB Atlas!");
+    } catch (err) {
+        console.error("Failed to connect to MongoDB", err);
+        process.exit(1);
+    }
+}
+
 // --- CONFIGURATION ---
 const ADMIN_USERNAME = "adminnvrp";
-const ADMIN_PASSWORD = "password1234"; // IMPORTANT: Change this in a real application
+const ADMIN_PASSWORD = "password1234";
 
 // --- MIDDLEWARE ---
 app.use(cors());
@@ -26,7 +44,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 5000000 }, // 5MB limit
+    limits: { fileSize: 5000000 },
     fileFilter: (req, file, cb) => {
         const filetypes = /jpeg|jpg|png|gif/;
         const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
@@ -35,24 +53,6 @@ const upload = multer({
         cb('Error: Images Only!');
     }
 }).single('screenshot');
-
-// --- DATABASE FUNCTIONS (JSON files for simplicity) ---
-const DONATIONS_DB_PATH = path.join(__dirname, 'donations.json');
-const WAITLIST_DB_PATH = path.join(__dirname, 'waitlist.json');
-
-function readDB(filePath) {
-    if (!fs.existsSync(filePath)) return [];
-    try {
-        const data = fs.readFileSync(filePath);
-        return JSON.parse(data);
-    } catch (error) {
-        return [];
-    }
-}
-
-function writeDB(filePath, data) {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-}
 
 // --- API ROUTES ---
 
@@ -68,7 +68,7 @@ app.post('/api/login', (req, res) => {
 
 // Submit a new donation
 app.post('/api/donations', (req, res) => {
-    upload(req, res, (err) => {
+    upload(req, res, async (err) => {
         if (err) return res.status(400).json({ message: err });
         if (!req.file) return res.status(400).json({ message: 'Error: No File Selected!' });
 
@@ -78,89 +78,90 @@ app.post('/api/donations', (req, res) => {
         }
 
         const newDonation = {
-            id: Date.now(),
             tier,
             price: `₦${parseInt(price).toLocaleString()}`,
             discordUser,
             inGameName,
             screenshotUrl: `/uploads/${req.file.filename}`,
-            date: new Date().toISOString(),
+            date: new Date(), // Use JS Date object
             status: 'pending'
         };
-
-        const donations = readDB(DONATIONS_DB_PATH);
-        donations.unshift(newDonation);
-        writeDB(DONATIONS_DB_PATH, donations);
-        res.status(201).json({ message: 'Donation submitted successfully!', donation: newDonation });
+        
+        await db.collection('donations').insertOne(newDonation);
+        res.status(201).json({ message: 'Donation submitted successfully!' });
     });
 });
 
 // Get all donations (for admin)
-app.get('/api/donations', (req, res) => {
-    const donations = readDB(DONATIONS_DB_PATH);
+app.get('/api/donations', async (req, res) => {
+    const donations = await db.collection('donations').find().sort({date: -1}).toArray();
     res.json(donations);
 });
 
 // Update donation status (for admin)
-app.put('/api/donations/:id/status', (req, res) => {
+app.put('/api/donations/:id/status', async (req, res) => {
+    const { ObjectId } = require('mongodb');
     const { id } = req.params;
     const { status } = req.body;
-    if (!status || !['pending', 'processed'].includes(status)) {
-        return res.status(400).json({ message: 'Invalid status.' });
+
+    // Basic validation for ID to prevent crashes
+    if (!ObjectId.isValid(id)) {
+        return res.status(400).json({ message: 'Invalid ID format.' });
     }
-    const donations = readDB(DONATIONS_DB_PATH);
-    const donationIndex = donations.findIndex(d => d.id == id);
-    if (donationIndex > -1) {
-        donations[donationIndex].status = status;
-        writeDB(DONATIONS_DB_PATH, donations);
-        res.json({ message: 'Status updated successfully', donation: donations[donationIndex] });
-    } else {
-        res.status(404).json({ message: 'Donation not found.' });
+
+    try {
+        const result = await db.collection('donations').updateOne(
+            { _id: new ObjectId(id) },
+            { $set: { status: status } }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ message: 'Donation not found.' });
+        }
+        res.json({ message: 'Status updated successfully' });
+    } catch (error) {
+        console.error("Failed to update donation status:", error);
+        res.status(500).json({ message: 'An internal server error occurred.' });
     }
 });
 
+
 // Submit a new waitlist application
-app.post('/api/waitlist', (req, res) => {
+app.post('/api/waitlist', async (req, res) => {
     const { discordUser, inGameName, age, rpDefinition, powergaming, backstory } = req.body;
-    if (!discordUser || !inGameName || !age || !rpDefinition || !powergaming || !backstory) {
+    if (!discordUser || !inGameName || !age) {
         return res.status(400).json({ message: 'All application fields are required.' });
     }
-
-    const newApplication = {
-        id: Date.now(),
-        date: new Date().toISOString(),
-        ...req.body
-    };
-
-    const waitlist = readDB(WAITLIST_DB_PATH);
-    waitlist.unshift(newApplication);
-    writeDB(WAITLIST_DB_PATH, waitlist);
+    const newApplication = { date: new Date(), ...req.body };
+    await db.collection('waitlist').insertOne(newApplication);
     res.status(201).json({ message: 'Application submitted successfully!' });
 });
 
 // Get all waitlist applications (for admin)
-app.get('/api/waitlist', (req, res) => {
-    const waitlist = readDB(WAITLIST_DB_PATH);
+app.get('/api/waitlist', async (req, res) => {
+    const waitlist = await db.collection('waitlist').find().sort({date: -1}).toArray();
     res.json(waitlist);
 });
 
 // Get dashboard stats (for admin)
-app.get('/api/dashboard-stats', (req, res) => {
-    const donations = readDB(DONATIONS_DB_PATH);
-    const waitlist = readDB(WAITLIST_DB_PATH);
-    const today = new Date().toISOString().slice(0, 10);
+app.get('/api/dashboard-stats', async (req, res) => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-    const playersToday = waitlist.filter(player => player.date.slice(0, 10) === today).length;
+        const totalPlayers = await db.collection('waitlist').countDocuments();
+        const playersToday = await db.collection('waitlist').countDocuments({ date: { $gte: today } });
+        const totalDonations = await db.collection('donations').countDocuments();
+        const pendingDonations = await db.collection('donations').countDocuments({ status: 'pending' });
 
-    const stats = {
-        totalPlayers: waitlist.length,
-        playersToday: playersToday,
-        totalDonations: donations.length,
-        pendingDonations: donations.filter(d => d.status === 'pending').length
-    };
-    res.json(stats);
+        res.json({ totalPlayers, playersToday, totalDonations, pendingDonations });
+    } catch (error) {
+        console.error("Failed to fetch dashboard stats:", error);
+        res.status(500).json({ message: 'An internal server error occurred while fetching stats.' });
+    }
 });
 
-
 // --- START SERVER ---
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+connectToDb().then(() => {
+    app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+});
