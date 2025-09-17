@@ -49,34 +49,32 @@ async function connectToSampDb() {
     }
 }
 
-// --- CONFIGURATION ---
-const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "password";
+// Helper function to translate faction ID to name
+function getFactionName(factionId) {
+    switch (factionId) {
+        case 1: return "Police";
+        case 2: return "Medic/Fire";
+        case 4: return "Government";
+        case 5: return "Mechanic";
+        case 11: return "EFCC";
+        default: return "Civilian";
+    }
+}
 
-// --- MIDDLEWARE ---
+// --- CONFIGURATION & MIDDLEWARE ---
+const ADMIN_USERNAME = "adminnvrp";
+const ADMIN_PASSWORD = "password1234";
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// --- STORAGE FOR UPLOADS (Multer) ---
 const storage = multer.diskStorage({
     destination: './uploads/',
-    filename: (req, file, cb) => {
-        cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-    }
+    filename: (req, file, cb) => cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
 });
-const upload = multer({
-    storage: storage,
-    limits: { fileSize: 5000000 },
-    fileFilter: (req, file, cb) => {
-        const filetypes = /jpeg|jpg|png|gif/;
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = filetypes.test(file.mimetype);
-        if (mimetype && extname) return cb(null, true);
-        cb('Error: Images Only!');
-    }
-}).single('screenshot');
+const upload = multer({ storage: storage }).single('screenshot');
 
 
 // --- API ROUTES ---
@@ -96,18 +94,8 @@ app.post('/api/donations', (req, res) => {
     upload(req, res, async (err) => {
         if (err) return res.status(400).json({ message: err });
         if (!req.file) return res.status(400).json({ message: 'Error: No File Selected!' });
-
         const { tier, price, discordUser, inGameName } = req.body;
-        const newDonation = {
-            tier,
-            price: `₦${parseInt(price).toLocaleString()}`,
-            discordUser,
-            inGameName,
-            screenshotUrl: `/uploads/${req.file.filename}`,
-            date: new Date(),
-            status: 'pending'
-        };
-        
+        const newDonation = { tier, price: `₦${parseInt(price).toLocaleString()}`, discordUser, inGameName, screenshotUrl: `/uploads/${req.file.filename}`, date: new Date(), status: 'pending' };
         await db.collection('donations').insertOne(newDonation);
         res.status(201).json({ message: 'Donation submitted successfully!' });
     });
@@ -125,7 +113,6 @@ app.put('/api/donations/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     if (!ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid ID format.' });
-    
     await db.collection('donations').updateOne({ _id: new ObjectId(id) }, { $set: { status: status } });
     res.json({ message: 'Status updated successfully' });
 });
@@ -154,29 +141,30 @@ app.get('/api/dashboard-stats', async (req, res) => {
     res.json({ totalPlayers, playersToday, totalDonations, pendingDonations });
 });
 
-// Player Lookup API Route
+// UPDATED: PLAYER LOOKUP API ROUTE
 app.get('/api/player/:name', async (req, res) => {
     const playerName = req.params.name;
-
-    if (!sampDbPool) {
-        return res.status(503).json({ message: "Game database is not connected." });
-    }
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
 
     try {
-        const [playerRows, vehicleRows] = await Promise.all([
-            sampDbPool.query("SELECT `cash`, `bank`, `level`, `hours` FROM `users` WHERE `username` = ?", [playerName]),
-            sampDbPool.query("SELECT `modelid`, `tickets` FROM `vehicles` WHERE `owner` = ?", [playerName]) // Adjust 'owner' if your column name is different
+        const [playerRows, vehicleRows, propertyLogs] = await Promise.all([
+            sampDbPool.query("SELECT `cash`, `bank`, `level`, `hours`, `faction`, `factionrank`, `fleeca_bank`, `crimes` FROM `users` WHERE `username` = ?", [playerName]),
+            sampDbPool.query("SELECT `modelid`, `tickets` FROM `vehicles` WHERE `owner` = ?", [playerName]),
+            sampDbPool.query("SELECT `description` FROM `log_property` WHERE `description` LIKE ?", [`%${playerName}%`])
         ]);
 
         const playerData = playerRows[0];
-
         if (!playerData || playerData.length === 0) {
             return res.status(404).json({ message: "Player not found in the game database." });
         }
 
+        const finalPlayerData = playerData[0];
+        finalPlayerData.factionName = getFactionName(finalPlayerData.faction);
+
         res.json({
-            stats: playerData[0],
-            vehicles: vehicleRows[0]
+            stats: finalPlayerData,
+            vehicles: vehicleRows[0],
+            propertyLogs: propertyLogs[0] 
         });
 
     } catch (error) {
@@ -187,7 +175,6 @@ app.get('/api/player/:name', async (req, res) => {
 
 
 // --- START SERVER ---
-// Connect to both databases, then start the Express server
 Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
     app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
 }).catch(err => {
