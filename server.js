@@ -61,7 +61,7 @@ function getFactionName(factionId) {
         case 2: return "Medic/Fire";
         case 4: return "Government";
         case 5: return "Mechanic";
-        case 11: return "EFCC";
+        case 16: return "EFCC";
         default: return "Civilian";
     }
 }
