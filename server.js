@@ -12,8 +12,7 @@ const PORT = process.env.PORT || 3000;
 const DONATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014006836199526/OE4J0sWbDSxcePTAH0qgE8JKa5BDTS5Zj0YpjNcTu55dcA5oI3j7WVUM7zzbasF-GHK5";
 const APPLICATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014141452386405/6zo3kwZ24-RakI_btJN8kiegGnuwkSvN5SPmBeQJ9j_Wv2IsE3mpZGLf4KgOY_h1Z2X3";
 const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
-// --- NEW --- Add your new webhook URLs here
-const FACTION_LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf"; 
+const FACTION_LOG_WEBHOOK_URL = "YOUR_FACTION_LOG_WEBHOOK_URL_HERE"; 
 const GANG_LOG_WEBHOOK_URL = "YOUR_GANG_LOG_WEBHOOK_URL_HERE";
 
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp"; 
@@ -62,7 +61,7 @@ function getFactionName(factionId) {
         case 2: return "Medic/Fire";
         case 4: return "Government";
         case 5: return "Mechanic";
-        case 16: return "EFCC";
+        case 11: return "EFCC";
         default: return "Civilian";
     }
 }
@@ -196,8 +195,6 @@ app.get('/api/online-players', async (req, res) => {
     }
 });
 
-
-// --- NEW LOGS ENDPOINT ---
 app.get('/api/logs/:type', async (req, res) => {
     const validTypes = {
         admin: 'log_admin',
@@ -216,7 +213,7 @@ app.get('/api/logs/:type', async (req, res) => {
     }
 
     const page = parseInt(req.query.page) || 1;
-    const limit = 50; // Show 50 logs per page
+    const limit = 50;
     const offset = (page - 1) * limit;
 
     try {
@@ -235,6 +232,58 @@ app.get('/api/logs/:type', async (req, res) => {
     } catch (error) {
         console.error(`MySQL Get ${logType} Logs Error:`, error);
         res.status(500).json({ message: `Failed to fetch ${logType} logs.` });
+    }
+});
+
+// --- ECONOMY ENDPOINT ---
+app.get('/api/economy-stats', async (req, res) => {
+    if (!sampDbPool) {
+        return res.status(503).json({ message: "Game database is not connected." });
+    }
+
+    try {
+        const [
+            [[{ totalPlayerCash, totalPlayerBank }]],
+            [wealthDistribution],
+            [topVehicles],
+            [[{ ownedBusinesses }]],
+            [[{ totalBusinesses }]],
+            [[{ totalBusinessCash }]]
+        ] = await Promise.all([
+            sampDbPool.query("SELECT SUM(cash) AS totalPlayerCash, SUM(bank) AS totalPlayerBank FROM users"),
+            sampDbPool.query(`
+                SELECT
+                    CASE
+                        WHEN (cash + bank) BETWEEN 0 AND 25000 THEN 'Newcomer ($0 - $25k)'
+                        WHEN (cash + bank) BETWEEN 25001 AND 150000 THEN 'Working Class ($25k - $150k)'
+                        WHEN (cash + bank) BETWEEN 150001 AND 750000 THEN 'Middle Class ($150k - $750k)'
+                        ELSE 'Wealthy ($750k+)'
+                    END AS wealthBracket,
+                    COUNT(*) AS playerCount
+                FROM users
+                GROUP BY wealthBracket
+                ORDER BY MIN(cash + bank)
+            `),
+            sampDbPool.query("SELECT modelid, COUNT(*) AS vehicleCount FROM vehicles GROUP BY modelid ORDER BY vehicleCount DESC LIMIT 10"),
+            sampDbPool.query("SELECT COUNT(*) as ownedBusinesses FROM businesses WHERE ownerid != 0"),
+            sampDbPool.query("SELECT COUNT(*) as totalBusinesses FROM businesses"),
+            sampDbPool.query("SELECT SUM(cash) as totalBusinessCash FROM businesses")
+        ]);
+
+        res.json({
+            totalCirculation: (totalPlayerCash || 0) + (totalPlayerBank || 0),
+            totalPlayerCash: totalPlayerCash || 0,
+            totalPlayerBank: totalPlayerBank || 0,
+            wealthDistribution,
+            topVehicles,
+            ownedBusinesses: ownedBusinesses || 0,
+            totalBusinesses: totalBusinesses || 0,
+            totalBusinessCash: totalBusinessCash || 0
+        });
+
+    } catch (error) {
+        console.error("MySQL Get Economy Stats Error:", error);
+        res.status(500).json({ message: "Failed to fetch economy statistics." });
     }
 });
 
