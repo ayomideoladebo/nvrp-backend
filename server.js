@@ -12,6 +12,9 @@ const PORT = process.env.PORT || 3000;
 const DONATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014006836199526/OE4J0sWbDSxcePTAH0qgE8JKa5BDTS5Zj0YpjNcTu55dcA5oI3j7WVUM7zzbasF-GHK5";
 const APPLICATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014141452386405/6zo3kwZ24-RakI_btJN8kiegGnuwkSvN5SPmBeQJ9j_Wv2IsE3mpZGLf4KgOY_h1Z2X3";
 const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
+// --- NEW --- Add your new webhook URLs here
+const FACTION_LOG_WEBHOOK_URL = "YOUR_FACTION_LOG_WEBHOOK_URL_HERE"; 
+const GANG_LOG_WEBHOOK_URL = "YOUR_GANG_LOG_WEBHOOK_URL_HERE";
 
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp"; 
 const DB_NAME = "nigeria-vibe-rp";
@@ -27,9 +30,6 @@ const sampDbOptions = {
     connectionLimit: 10,
     queueLimit: 0
 };
-
-const ADMIN_USERNAME = "adminnvrp";
-const ADMIN_PASSWORD = "password1234";
 
 // --- DATABASE CONNECTIONS ---
 async function connectToMongo() {
@@ -87,7 +87,9 @@ async function sendToDiscord(webhookUrl, embed) {
     }
 }
 
-// --- MIDDLEWARE ---
+// --- CONFIGURATION & MIDDLEWARE ---
+const ADMIN_USERNAME = "adminnvrp";
+const ADMIN_PASSWORD = "password1234";
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -97,6 +99,7 @@ const storage = multer.diskStorage({
     filename: (req, file, cb) => cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
 });
 const upload = multer({ storage: storage }).single('screenshot');
+
 
 // --- API ROUTES ---
 app.post('/api/login', (req, res) => {
@@ -181,7 +184,9 @@ app.get('/api/player/:name', async (req, res) => {
 });
 
 app.get('/api/online-players', async (req, res) => {
-    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+    if (!sampDbPool) {
+        return res.status(503).json({ message: "Game database is not connected." });
+    }
     try {
         const [rows] = await sampDbPool.query("SELECT `username` FROM `users` WHERE `is_online` = 1");
         res.json(rows); 
@@ -191,34 +196,47 @@ app.get('/api/online-players', async (req, res) => {
     }
 });
 
-// --- NEW: LOG FETCHING API ROUTES with Pagination ---
-const LOGS_PER_PAGE = 50;
 
-async function getPaginatedLogs(req, res, tableName) {
+// --- NEW LOGS ENDPOINT ---
+app.get('/api/logs/:type', async (req, res) => {
+    const validTypes = {
+        admin: 'log_admin',
+        faction: 'log_faction',
+        gang: 'log_gang'
+    };
+    const logType = req.params.type;
+    const tableName = validTypes[logType];
+
+    if (!tableName) {
+        return res.status(400).json({ message: 'Invalid log type requested.' });
+    }
+
     if (!sampDbPool) {
         return res.status(503).json({ message: "Game database is not connected." });
     }
-    const page = parseInt(req.query.page, 10) || 1;
-    const offset = (page - 1) * LOGS_PER_PAGE;
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = 50; // Show 50 logs per page
+    const offset = (page - 1) * limit;
 
     try {
-        const [[{ total }]] = await sampDbPool.query(`SELECT COUNT(*) as total FROM \`${tableName}\``);
-        const [logs] = await sampDbPool.query(`SELECT \`date\`, \`description\` FROM \`${tableName}\` ORDER BY \`date\` DESC LIMIT ? OFFSET ?`, [LOGS_PER_PAGE, offset]);
+        const [logs] = await sampDbPool.query(
+            `SELECT date, description FROM \`${tableName}\` ORDER BY date DESC LIMIT ? OFFSET ?`,
+            [limit, offset]
+        );
+        const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM \`${tableName}\``);
         
         res.json({
             logs,
-            totalPages: Math.ceil(total / LOGS_PER_PAGE),
+            totalCount: count,
+            totalPages: Math.ceil(count / limit),
             currentPage: page
         });
     } catch (error) {
-        console.error(`Error fetching logs from ${tableName}:`, error);
-        res.status(500).json({ message: `An error occurred while fetching ${tableName} logs.` });
+        console.error(`MySQL Get ${logType} Logs Error:`, error);
+        res.status(500).json({ message: `Failed to fetch ${logType} logs.` });
     }
-}
-
-app.get('/api/logs/admin', (req, res) => getPaginatedLogs(req, res, 'log_admin'));
-app.get('/api/logs/faction', (req, res) => getPaginatedLogs(req, res, 'log_faction'));
-app.get('/api/logs/gang', (req, res) => getPaginatedLogs(req, res, 'log_gang'));
+});
 
 
 // --- START SERVER ---
