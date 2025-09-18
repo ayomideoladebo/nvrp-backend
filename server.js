@@ -8,11 +8,7 @@ const mysql = require('mysql2/promise');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// --- CREDENTIALS ---
-const DONATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014006836199526/OE4J0sWbDSxcePTAH0qgE8JKa5BDTS5Zj0YpjNcTu55dcA5oI3j7WVUM7zzbasF-GHK5";
-const APPLICATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014141452386405/6zo3kwZ24-RakI_btJN8kiegGnuwkSvN5SPmBeQJ9j_Wv2IsE3mpZGLf4KgOY_h1Z2X3";
-const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
-
+// --- PUBLIC CREDENTIALS ---
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp"; 
 const DB_NAME = "nigeria-vibe-rp";
 let db;
@@ -27,6 +23,9 @@ const sampDbOptions = {
     connectionLimit: 10,
     queueLimit: 0
 };
+
+const ADMIN_USERNAME = "adminnvrp";
+const ADMIN_PASSWORD = "password1234";
 
 // --- DATABASE CONNECTIONS ---
 async function connectToMongo() {
@@ -52,7 +51,7 @@ async function connectToSampDb() {
     }
 }
 
-// --- HELPER FUNCTIONS ---
+// --- HELPER FUNCTION ---
 function getFactionName(factionId) {
     switch (factionId) {
         case 1: return "Police";
@@ -64,29 +63,7 @@ function getFactionName(factionId) {
     }
 }
 
-async function sendToDiscord(webhookUrl, embed) {
-    if (!webhookUrl || webhookUrl.includes("YOUR_")) {
-        console.log("Discord Webhook URL is not configured. Skipping notification.");
-        return;
-    }
-    try {
-        await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: "NV:RP Alerter",
-                avatar_url: "https://i.imgur.com/4M34hi2.png",
-                embeds: [embed]
-            })
-        });
-    } catch (error) {
-        console.error("Error sending to Discord:", error.message);
-    }
-}
-
-// --- CONFIGURATION & MIDDLEWARE ---
-const ADMIN_USERNAME = "adminnvrp";
-const ADMIN_PASSWORD = "password1234";
+// --- MIDDLEWARE ---
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -96,7 +73,6 @@ const storage = multer.diskStorage({
     filename: (req, file, cb) => cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
 });
 const upload = multer({ storage: storage }).single('screenshot');
-
 
 // --- API ROUTES ---
 app.post('/api/login', (req, res) => {
@@ -115,8 +91,6 @@ app.post('/api/donations', (req, res) => {
         const { tier, price, discordUser, inGameName } = req.body;
         const newDonation = { tier, price: `₦${parseInt(price).toLocaleString()}`, discordUser, inGameName, screenshotUrl: `/uploads/${req.file.filename}`, date: new Date(), status: 'pending' };
         await db.collection('donations').insertOne(newDonation);
-        const donationEmbed = { title: "💰 New Donation Submitted!", color: 0xFFD700, fields: [{ name: "In-Game Name", value: inGameName, inline: true }, { name: "Discord User", value: discordUser, inline: true }, { name: "Tier", value: tier, inline: true }, { name: "Amount", value: `₦${parseInt(price).toLocaleString()}`, inline: true }], footer: { text: "Please verify the payment in the admin dashboard." }, timestamp: new Date().toISOString() };
-        sendToDiscord(DONATIONS_WEBHOOK_URL, donationEmbed);
         res.status(201).json({ message: 'Donation submitted successfully!' });
     });
 });
@@ -135,11 +109,8 @@ app.put('/api/donations/:id/status', async (req, res) => {
 });
 
 app.post('/api/waitlist', async (req, res) => {
-    const { discordUser, inGameName, age } = req.body;
     const newApplication = { date: new Date(), ...req.body };
     await db.collection('waitlist').insertOne(newApplication);
-    const applicationEmbed = { title: "📝 New Player Application!", color: 0x00BFFF, fields: [{ name: "In-Game Name", value: inGameName, inline: true }, { name: "Discord User", value: discordUser, inline: true }, { name: "Age", value: age, inline: true }], footer: { text: "Please review the full application in the dashboard." }, timestamp: new Date().toISOString() };
-    sendToDiscord(APPLICATIONS_WEBHOOK_URL, applicationEmbed);
     res.status(201).json({ message: 'Application submitted successfully!' });
 });
 
@@ -163,7 +134,7 @@ app.get('/api/player/:name', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
         const [playerRows, vehicleRows, propertyLogs] = await Promise.all([
-            sampDbPool.query("SELECT `cash`, `bank`, `level`, `hours`, `faction`, `factionrank`, `fleeca_bank`, `crimes` FROM `users` WHERE `username` = ?", [playerName]),
+            sampDbPool.query("SELECT `cash`, `bank`, `level`, `hours`, `faction`, `factionrank`, `fleeca_bank`, `crimes` FROM `users` WHERE `name` = ?", [playerName]),
             sampDbPool.query("SELECT `modelid`, `tickets` FROM `vehicles` WHERE `owner` = ?", [playerName]),
             sampDbPool.query("SELECT `description` FROM `log_property` WHERE `description` LIKE ?", [`%${playerName}%`])
         ]);
@@ -181,11 +152,9 @@ app.get('/api/player/:name', async (req, res) => {
 });
 
 app.get('/api/online-players', async (req, res) => {
-    if (!sampDbPool) {
-        return res.status(503).json({ message: "Game database is not connected." });
-    }
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
-        const [rows] = await sampDbPool.query("SELECT `username` FROM `users` WHERE `is_online` = 1");
+        const [rows] = await sampDbPool.query("SELECT `name` FROM `users` WHERE `is_online` = 1");
         res.json(rows); 
     } catch (error) {
         console.error("MySQL Get Online Players Error:", error);
@@ -193,6 +162,34 @@ app.get('/api/online-players', async (req, res) => {
     }
 });
 
+// --- LOG FETCHING API ROUTES with Pagination ---
+const LOGS_PER_PAGE = 50;
+
+async function getPaginatedLogs(req, res, tableName) {
+    if (!sampDbPool) {
+        return res.status(503).json({ message: "Game database is not connected." });
+    }
+    const page = parseInt(req.query.page, 10) || 1;
+    const offset = (page - 1) * LOGS_PER_PAGE;
+
+    try {
+        const [[{ total }]] = await sampDbPool.query(`SELECT COUNT(*) as total FROM \`${tableName}\``);
+        const [logs] = await sampDbPool.query(`SELECT \`date\`, \`description\` FROM \`${tableName}\` ORDER BY \`date\` DESC LIMIT ? OFFSET ?`, [LOGS_PER_PAGE, offset]);
+        
+        res.json({
+            logs,
+            totalPages: Math.ceil(total / LOGS_PER_PAGE),
+            currentPage: page
+        });
+    } catch (error) {
+        console.error(`Error fetching logs from ${tableName}:`, error);
+        res.status(500).json({ message: `An error occurred while fetching ${tableName} logs.` });
+    }
+}
+
+app.get('/api/logs/admin', (req, res) => getPaginatedLogs(req, res, 'log_admin'));
+app.get('/api/logs/faction', (req, res) => getPaginatedLogs(req, res, 'log_faction'));
+app.get('/api/logs/gang', (req, res) => getPaginatedLogs(req, res, 'log_gang'));
 
 // --- START SERVER ---
 Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
