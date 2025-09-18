@@ -185,7 +185,7 @@ app.get('/api/online-players', async (req, res) => {
         return res.status(503).json({ message: "Game database is not connected." });
     }
     try {
-        const [rows] = await sampDbPool.query("SELECT `name` FROM `users` WHERE `is_online` = 1");
+        const [rows] = await sampDbPool.query("SELECT `username` FROM `users` WHERE `is_online` = 1");
         res.json(rows); 
     } catch (error) {
         console.error("MySQL Get Online Players Error:", error);
