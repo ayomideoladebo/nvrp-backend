@@ -271,7 +271,7 @@ app.get('/api/economy-stats', async (req, res) => {
         ]);
 
         res.json({
-            totalCirculation: (totalPlayerCash + totalPlayerBank|| 0),
+            totalCirculation: (totalPlayerCash + totalPlayerBank || 0),
             totalPlayerCash: totalPlayerCash || 0,
             totalPlayerBank: totalPlayerBank || 0,
             wealthDistribution,
