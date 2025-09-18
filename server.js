@@ -2,17 +2,17 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 const mysql = require('mysql2/promise');
 const Rcon = require('samp-rcon');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// --- IMPORTANT: CREDENTIALS ---
+// --- CREDENTIALS ---
 const DONATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014006836199526/OE4J0sWbDSxcePTAH0qgE8JKa5BDTS5Zj0YpjNcTu55dcA5oI3j7WVUM7zzbasF-GHK5";
 const APPLICATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014141452386405/6zo3kwZ24-RakI_btJN8kiegGnuwkSvN5SPmBeQJ9j_Wv2IsE3mpZGLf4KgOY_h1Z2X3";
-const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf"; // <-- PASTE NEW WEBHOOK HERE
+const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
 
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp"; 
 const DB_NAME = "nigeria-vibe-rp";
@@ -31,7 +31,7 @@ const sampDbOptions = {
 
 const rconOptions = {
     host: "217.182.175.212",
-    port: 28071, // Or your server's port
+    port: 28071,
     password: "10903f2478b10a37"
 };
 
@@ -88,7 +88,7 @@ function getFactionName(factionId) {
 // Helper function to send Discord notifications
 async function sendToDiscord(webhookUrl, embed) {
     if (!webhookUrl || webhookUrl.includes("YOUR_")) {
-        console.log(`Webhook URL for an action is not configured. Skipping notification.`);
+        console.log("Discord Webhook URL is not configured. Skipping notification.");
         return;
     }
     try {
@@ -121,7 +121,6 @@ const upload = multer({ storage: storage }).single('screenshot');
 
 
 // --- API ROUTES ---
-
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
@@ -150,7 +149,6 @@ app.get('/api/donations', async (req, res) => {
 });
 
 app.put('/api/donations/:id/status', async (req, res) => {
-    const { ObjectId } = require('mongodb');
     const { id } = req.params;
     const { status } = req.body;
     if (!ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid ID format.' });
@@ -187,7 +185,7 @@ app.get('/api/player/:name', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
         const [playerRows, vehicleRows, propertyLogs] = await Promise.all([
-            sampDbPool.query("SELECT `cash`, `bank`, `level`, `hours`, `faction`, `factionrank`, `fleeca_bank`, `crimes` FROM `users` WHERE `username` = ?", [playerName]),
+            sampDbPool.query("SELECT `cash`, `bank`, `level`, `hours`, `faction`, `factionrank`, `fleeca_bank`, `crimes` FROM `users` WHERE `name` = ?", [playerName]),
             sampDbPool.query("SELECT `modelid`, `tickets` FROM `vehicles` WHERE `owner` = ?", [playerName]),
             sampDbPool.query("SELECT `description` FROM `log_property` WHERE `description` LIKE ?", [`%${playerName}%`])
         ]);
@@ -222,14 +220,10 @@ app.post('/api/admin/command', async (req, res) => {
     if (!playerName || !command) {
         return res.status(400).json({ message: "Player name and command are required." });
     }
-
     let rconCommand = '';
     let successMessage = '';
     let logEmbed;
-    
-    // Note: We don't have the admin's name, so we'll log it as "Web Dashboard".
     const adminUser = "Web Dashboard";
-
     switch (command) {
         case 'kick':
             rconCommand = `kick ${playerName}`;
@@ -255,7 +249,6 @@ app.post('/api/admin/command', async (req, res) => {
         default:
             return res.status(400).json({ message: "Invalid command." });
     }
-
     const result = await sendRconCommand(rconCommand);
     if (result.success) {
         await sendRconCommand(`say [WEB-ADMIN] ${successMessage}`);
@@ -269,11 +262,9 @@ app.post('/api/admin/command', async (req, res) => {
     }
 });
 
-
 // --- START SERVER ---
 Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
     app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
 }).catch(err => {
     console.error("Failed to initialize databases and start server.", err);
 });
-
