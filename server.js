@@ -28,6 +28,9 @@ const sampDbOptions = {
     queueLimit: 0
 };
 
+const ADMIN_USERNAME = "adminnvrp";
+const ADMIN_PASSWORD = "password1234";
+
 // --- DATABASE CONNECTIONS ---
 async function connectToMongo() {
     try {
@@ -59,7 +62,7 @@ function getFactionName(factionId) {
         case 2: return "Medic/Fire";
         case 4: return "Government";
         case 5: return "Mechanic";
-        case 11: return "EFCC";
+        case 16: return "EFCC";
         default: return "Civilian";
     }
 }
@@ -84,9 +87,7 @@ async function sendToDiscord(webhookUrl, embed) {
     }
 }
 
-// --- CONFIGURATION & MIDDLEWARE ---
-const ADMIN_USERNAME = "adminnvrp";
-const ADMIN_PASSWORD = "password1234";
+// --- MIDDLEWARE ---
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -96,7 +97,6 @@ const storage = multer.diskStorage({
     filename: (req, file, cb) => cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
 });
 const upload = multer({ storage: storage }).single('screenshot');
-
 
 // --- API ROUTES ---
 app.post('/api/login', (req, res) => {
@@ -181,9 +181,7 @@ app.get('/api/player/:name', async (req, res) => {
 });
 
 app.get('/api/online-players', async (req, res) => {
-    if (!sampDbPool) {
-        return res.status(503).json({ message: "Game database is not connected." });
-    }
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
         const [rows] = await sampDbPool.query("SELECT `username` FROM `users` WHERE `is_online` = 1");
         res.json(rows); 
@@ -192,6 +190,35 @@ app.get('/api/online-players', async (req, res) => {
         res.status(500).json({ message: "Failed to fetch online players." });
     }
 });
+
+// --- NEW: LOG FETCHING API ROUTES with Pagination ---
+const LOGS_PER_PAGE = 50;
+
+async function getPaginatedLogs(req, res, tableName) {
+    if (!sampDbPool) {
+        return res.status(503).json({ message: "Game database is not connected." });
+    }
+    const page = parseInt(req.query.page, 10) || 1;
+    const offset = (page - 1) * LOGS_PER_PAGE;
+
+    try {
+        const [[{ total }]] = await sampDbPool.query(`SELECT COUNT(*) as total FROM \`${tableName}\``);
+        const [logs] = await sampDbPool.query(`SELECT \`date\`, \`description\` FROM \`${tableName}\` ORDER BY \`date\` DESC LIMIT ? OFFSET ?`, [LOGS_PER_PAGE, offset]);
+        
+        res.json({
+            logs,
+            totalPages: Math.ceil(total / LOGS_PER_PAGE),
+            currentPage: page
+        });
+    } catch (error) {
+        console.error(`Error fetching logs from ${tableName}:`, error);
+        res.status(500).json({ message: `An error occurred while fetching ${tableName} logs.` });
+    }
+}
+
+app.get('/api/logs/admin', (req, res) => getPaginatedLogs(req, res, 'log_admin'));
+app.get('/api/logs/faction', (req, res) => getPaginatedLogs(req, res, 'log_faction'));
+app.get('/api/logs/gang', (req, res) => getPaginatedLogs(req, res, 'log_gang'));
 
 
 // --- START SERVER ---
