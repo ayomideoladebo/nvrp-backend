@@ -22,7 +22,7 @@ function factionRoutes(sampDbPool) {
         try {
             const queries = [
                 sampDbPool.query("SELECT faction_treasury FROM factions WHERE id = ?", [id]),
-                sampDbPool.query("SELECT username, factionrank FROM users WHERE faction = ? ORDER BY factionrank DESC", [id])
+                sampDbPool.query("SELECT name, factionrank FROM users WHERE faction = ? ORDER BY factionrank DESC", [id])
             ];
 
             const [treasuryResult, membersResult] = await Promise.all(queries);
