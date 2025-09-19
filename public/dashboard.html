@@ -6,6 +6,7 @@
     <title>Dashboard - NV:RP Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --font-heading: 'Audiowide', sans-serif; --font-body: 'Rajdhani', sans-serif; --color-green-accent: #39FF14; --color-cyan-accent: #00FFFF;}
         body { font-family: var(--font-body); }
@@ -18,6 +19,8 @@
         .sidebar-open #sidebar { transform: translateX(0); }
         .sidebar-open #overlay { opacity: 1; pointer-events: auto; }
         #overlay { transition: opacity 0.3s ease-in-out; }
+        .pagination-btn:disabled { @apply bg-gray-600 cursor-not-allowed; }
+        .online-player-name { @apply cursor-pointer text-gray-200 hover:text-cyan-400 transition-colors duration-150; }
     </style>
 </head>
 <body class="bg-gray-950 text-white min-h-screen">
@@ -29,24 +32,33 @@
         </div>
         <nav class="mt-8">
             <a href="#dashboard" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
-                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                Dashboard
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg> Dashboard
             </a>
-             <a href="#lookup" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
-                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                Player Lookup
+            <a href="#economy" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg> Economy
+            </a>
+            <a href="#lookup" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg> Player Lookup
             </a>
             <a href="#players" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
-                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                Applications
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg> Applications
             </a>
             <a href="#donations" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
-                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1m0 1V4m0 2v1m0 0v1m-6 6h12M7 16a5 5 0 01-.894-9.902l-1.01-1.01A7 7 0 005 16m14 0a7 7 0 00-4.096-6.413l-1.01 1.01A5 5 0 0117 16"/></svg>
-                Donations
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1m0 1V4m0 2v1m0 0v1m-6 6h12M7 16a5 5 0 01-.894-9.902l-1.01-1.01A7 7 0 005 16m14 0a7 7 0 00-4.096-6.413l-1.01 1.01A5 5 0 0117 16"/></svg> Donations
+            </a>
+            <hr class="border-gray-700 my-4">
+            <p class="px-5 text-xs uppercase text-gray-500 font-semibold">Game Logs</p>
+            <a href="#admin-logs" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg> Admin Logs
+            </a>
+            <a href="#faction-logs" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 14l9-5-9-5-9 5 9 5z" /><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-5.998 12.078 12.078 0 01.665-6.479L12 14z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-5.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222 4 2.222V20" /></svg> Faction Logs
+            </a>
+            <a href="#gang-logs" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
+                 <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 8.958L13 7.5a5.963 5.963 0 00-6 0l.934 1.458M12 21v-3.333M6.4 18.356l2.1-2.1M17.6 18.356l-2.1-2.1M3.644 12H7m10 0h3.356M15.5 5.644l-2.1 2.1M8.5 5.644l2.1 2.1M12 3a9 9 0 100 18 9 9 0 000-18z"/></svg> Gang Logs
             </a>
             <a href="#" id="logout-btn" class="flex items-center py-3 px-5 text-lg text-red-400 hover:bg-red-500/20 hover:text-red-300 mt-10">
-                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                Logout
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg> Logout
             </a>
         </nav>
     </aside>
@@ -62,165 +74,337 @@
         <main class="p-6 md:p-12">
             <section id="dashboard" class="page-content">
                 <h2 class="text-4xl font-extrabold text-glow-green mb-8">Dashboard</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Total Applicants</p><p id="total-players" class="text-4xl font-bold">0</p></div>
-                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Applicants Today</p><p id="players-today" class="text-4xl font-bold">0</p></div>
-                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Total Donations</p><p id="total-donations" class="text-4xl font-bold">0</p></div>
-                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Pending Donations</p><p id="pending-donations" class="text-4xl font-bold text-yellow-400">0</p></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Total Applicants</p><p id="total-players" class="text-4xl font-bold">0</p></div>
+                        <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Applicants Today</p><p id="players-today" class="text-4xl font-bold">0</p></div>
+                        <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Total Donations</p><p id="total-donations" class="text-4xl font-bold">0</p></div>
+                        <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><p class="text-sm text-gray-400">Pending Donations</p><p id="pending-donations" class="text-4xl font-bold text-yellow-400">0</p></div>
+                    </div>
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
+                        <h3 class="text-xl font-bold mb-4">Online Players (<span id="online-players-count">0</span>)</h3>
+                        <div id="online-players-list" class="space-y-2 h-48 overflow-y-auto pr-2 text-lg"><p class="text-gray-400">Loading...</p></div>
+                    </div>
                 </div>
             </section>
             
-            <section id="lookup" class="page-content hidden">
-                <h2 class="text-4xl font-extrabold text-glow-green mb-8">Player In-Game Lookup</h2>
-                <form id="lookup-form" class="flex items-center gap-4 mb-8">
-                    <input type="text" id="player-name-input" placeholder="Enter In-Game Name (e.g., FirstName_LastName)" required class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none">
-                    <button type="submit" class="bg-[var(--color-cyan-accent)] text-black px-6 py-3 rounded-md font-bold hover:bg-[var(--color-cyan-accent)]/80 flex-shrink-0">Search</button>
-                </form>
-                <div id="lookup-results" class="hidden">
+            <section id="economy" class="page-content hidden">
+                <h2 class="text-4xl font-extrabold text-glow-green mb-8">Economy Dashboard</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
+                        <p class="text-sm text-gray-400">Live Total Circulation</p>
+                        <p id="total-circulation" class="text-4xl font-bold text-green-400">$0</p>
+                        <p id="circulation-change" class="text-sm font-semibold mt-1">&nbsp;</p>
                     </div>
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
+                        <p class="text-sm text-gray-400">Yesterday's Circulation</p>
+                        <p id="yesterday-circulation" class="text-4xl font-bold text-gray-300">$0</p>
+                    </div>
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
+                        <p class="text-sm text-gray-400">7 Days Ago</p>
+                        <p id="week-ago-circulation" class="text-4xl font-bold text-gray-300">$0</p>
+                    </div>
+                </div>
+                <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg mb-8">
+                    <h3 class="text-xl font-bold mb-4">30-Day Circulation Trend</h3>
+                    <canvas id="circulation-history-chart"></canvas>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><h3 class="text-xl font-bold mb-4">Wealth Distribution</h3><canvas id="wealth-chart"></canvas></div>
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg"><h3 class="text-xl font-bold mb-4">Top 10 Most Owned Vehicles</h3><canvas id="vehicles-chart"></canvas></div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
+                        <h3 class="text-xl font-bold mb-4">Wealthiest Players</h3>
+                        <div id="wealthiest-players-list" class="space-y-3"></div>
+                    </div>
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
+                        <h3 class="text-xl font-bold mb-4">Top Businesses</h3>
+                        <div id="top-businesses-list" class="space-y-3"></div>
+                    </div>
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
+                        <h3 class="text-xl font-bold mb-4">Faction Treasuries</h3>
+                        <div id="faction-treasuries-list" class="space-y-3"></div>
+                    </div>
+                </div>
             </section>
 
+            <section id="lookup" class="page-content hidden">
+                 <h2 class="text-4xl font-extrabold text-glow-green mb-8">Player In-Game Lookup</h2>
+                 <form id="lookup-form" class="flex items-center gap-4 mb-8">
+                     <input type="text" id="player-name-input" placeholder="Enter In-Game Name (e.g., FirstName_LastName)" required class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none">
+                     <button type="submit" class="bg-[var(--color-cyan-accent)] text-black px-6 py-3 rounded-md font-bold hover:bg-[var(--color-cyan-accent)]/80 flex-shrink-0">Search</button>
+                 </form>
+                 <div id="lookup-results" class="hidden"></div>
+            </section>
             <section id="players" class="page-content hidden">
-                <h2 class="text-4xl font-extrabold text-glow-green mb-8">Player Applications</h2>
-                <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto"><table class="w-full text-left min-w-[800px]"><thead class="bg-gray-800"><tr><th class="p-4 text-sm font-semibold text-green-400 uppercase">Submitted</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Discord & In-Game</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Age</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Answers</th></tr></thead><tbody id="players-tbody"></tbody></table></div>
+                 <h2 class="text-4xl font-extrabold text-glow-green mb-8">Player Applications</h2>
+                 <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto"><table class="w-full text-left min-w-[800px]"><thead class="bg-gray-800"><tr><th class="p-4 text-sm font-semibold text-green-400 uppercase">Submitted</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Discord & In-Game</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Age</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Answers</th></tr></thead><tbody id="players-tbody"></tbody></table></div>
             </section>
-
             <section id="donations" class="page-content hidden">
-                <h2 class="text-4xl font-extrabold text-glow-green mb-8">Donation History</h2>
-                <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto"><table class="w-full text-left min-w-[800px]"><thead class="bg-gray-800"><tr><th class="p-4 text-sm font-semibold text-green-400 uppercase">Date</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Discord & In-Game</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Tier & Amount</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Screenshot</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Status</th></tr></thead><tbody id="donations-tbody"></tbody></table></div>
+                 <h2 class="text-4xl font-extrabold text-glow-green mb-8">Donation History</h2>
+                 <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto"><table class="w-full text-left min-w-[800px]"><thead class="bg-gray-800"><tr><th class="p-4 text-sm font-semibold text-green-400 uppercase">Date</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Discord & In-Game</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Tier & Amount</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Screenshot</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Status</th></tr></thead><tbody id="donations-tbody"></tbody></table></div>
+            </section>
+            <section id="admin-logs" class="page-content hidden">
+                <h2 class="text-4xl font-extrabold text-glow-green mb-8">Admin Logs</h2>
+                <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto">
+                    <table class="w-full text-left min-w-[800px]"><thead class="bg-gray-800"><tr><th class="p-4 text-sm font-semibold text-green-400 uppercase">Date</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Description</th></tr></thead><tbody id="admin-logs-tbody"></tbody></table>
+                </div>
+                <div id="admin-logs-pagination" class="mt-6 flex justify-between items-center"></div>
+            </section>
+            <section id="faction-logs" class="page-content hidden">
+                 <h2 class="text-4xl font-extrabold text-glow-green mb-8">Faction Logs</h2>
+                <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto">
+                    <table class="w-full text-left min-w-[800px]"><thead class="bg-gray-800"><tr><th class="p-4 text-sm font-semibold text-green-400 uppercase">Date</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Description</th></tr></thead><tbody id="faction-logs-tbody"></tbody></table>
+                </div>
+                <div id="faction-logs-pagination" class="mt-6 flex justify-between items-center"></div>
+            </section>
+            <section id="gang-logs" class="page-content hidden">
+                 <h2 class="text-4xl font-extrabold text-glow-green mb-8">Gang Logs</h2>
+                <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto">
+                    <table class="w-full text-left min-w-[800px]"><thead class="bg-gray-800"><tr><th class="p-4 text-sm font-semibold text-green-400 uppercase">Date</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Description</th></tr></thead><tbody id="gang-logs-tbody"></tbody></table>
+                </div>
+                <div id="gang-logs-pagination" class="mt-6 flex justify-between items-center"></div>
             </section>
         </main>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const backendUrl = "https://nigeria-vibe-backend.onrender.com";
+    document.addEventListener('DOMContentLoaded', () => {
+        const backendUrl = "https://nigeria-vibe-backend.onrender.com";
 
-            // --- AUTHENTICATION ---
-            if (localStorage.getItem('isLoggedIn') !== 'true') { window.location.href = 'admin.html'; return; }
-            document.getElementById('logout-btn').addEventListener('click', () => { localStorage.removeItem('isLoggedIn'); window.location.href = 'admin.html'; });
+        if (localStorage.getItem('isLoggedIn') !== 'true') { window.location.href = 'admin.html'; return; }
+        document.getElementById('logout-btn').addEventListener('click', () => { localStorage.removeItem('isLoggedIn'); window.location.href = 'admin.html'; });
+        
+        const menuBtn = document.getElementById('menu-btn'), overlay = document.getElementById('overlay'), body = document.body;
+        menuBtn.addEventListener('click', () => body.classList.toggle('sidebar-open'));
+        overlay.addEventListener('click', () => body.classList.remove('sidebar-open'));
+        
+        const navLinks = document.querySelectorAll('.nav-link'), pages = document.querySelectorAll('.page-content');
+        function showPage(hash) {
+            const targetId = hash.substring(1) || 'dashboard';
+            pages.forEach(p => p.classList.add('hidden'));
+            document.getElementById(targetId)?.classList.remove('hidden');
+            navLinks.forEach(link => link.classList.toggle('bg-gray-800', link.hash === hash));
+            body.classList.remove('sidebar-open');
+        }
+        navLinks.forEach(link => { link.addEventListener('click', (e) => { e.preventDefault(); window.location.hash = link.hash; }); });
+        window.addEventListener('hashchange', () => showPage(window.location.hash));
 
-            // --- MOBILE SIDEBAR ---
-            const menuBtn = document.getElementById('menu-btn');
-            const overlay = document.getElementById('overlay');
-            const body = document.body;
-            menuBtn.addEventListener('click', () => body.classList.toggle('sidebar-open'));
-            overlay.addEventListener('click', () => body.classList.remove('sidebar-open'));
-            
-            // --- NAVIGATION & PAGE DISPLAY ---
-            const navLinks = document.querySelectorAll('.nav-link');
-            const pages = document.querySelectorAll('.page-content');
-            function showPage(hash) {
-                const targetId = hash.substring(1) || 'dashboard';
-                pages.forEach(p => p.classList.add('hidden'));
-                document.getElementById(targetId)?.classList.remove('hidden');
-                navLinks.forEach(link => { link.classList.toggle('bg-gray-800', link.hash === hash); });
-                body.classList.remove('sidebar-open');
-            }
-            navLinks.forEach(link => { link.addEventListener('click', (e) => { e.preventDefault(); window.location.hash = link.hash; }); });
-            window.addEventListener('hashchange', () => showPage(window.location.hash));
-
-            // --- DATA FETCHING FUNCTIONS ---
-            const fetchDashboardStats = async () => {
-                try {
-                    const res = await fetch(`${backendUrl}/api/dashboard-stats`);
-                    const stats = await res.json();
-                    document.getElementById('total-players').textContent = stats.totalPlayers;
-                    document.getElementById('players-today').textContent = stats.playersToday;
-                    document.getElementById('total-donations').textContent = stats.totalDonations;
-                    document.getElementById('pending-donations').textContent = stats.pendingDonations;
-                } catch (error) { console.error('Failed to fetch stats:', error); }
-            };
-
-            const fetchPlayers = async () => {
-                const tbody = document.getElementById('players-tbody');
-                try {
-                    const res = await fetch(`${backendUrl}/api/waitlist`);
-                    const players = await res.json();
-                    tbody.innerHTML = '';
-                    if (players.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center p-8 text-gray-400">No applications found.</td></tr>'; return; }
-                    players.forEach(p => {
-                        const row = document.createElement('tr');
-                        row.className = 'border-b border-gray-800';
-                        row.innerHTML = `
-                            <td class="p-4 whitespace-nowrap">${new Date(p.date).toLocaleString()}</td>
-                            <td class="p-4"><p class="font-bold">${p.discordUser}</p><p class="text-sm text-gray-400">${p.inGameName}</p></td>
-                            <td class="p-4">${p.age}</td>
-                            <td class="p-4 text-sm text-gray-300"><details><summary class="cursor-pointer hover:text-white">View Answers</summary><div class="mt-2 space-y-2 p-3 bg-gray-800 rounded"><p><strong class="text-gray-400">RP Definition:</strong> ${p.rpDefinition}</p><p><strong class="text-gray-400">Powergaming:</strong> ${p.powergaming}</p><p><strong class="text-gray-400">Backstory:</strong> ${p.backstory}</p></div></details></td>`;
-                        tbody.appendChild(row);
-                    });
-                } catch (error) { tbody.innerHTML = '<tr><td colspan="4" class="text-center p-8 text-red-400">Failed to load data.</td></tr>'; }
-            };
-            
-            const donationsTbody = document.getElementById('donations-tbody');
-            const fetchDonations = async () => {
-                try {
-                    const response = await fetch(`${backendUrl}/api/donations`);
-                    const donations = await response.json();
-                    donationsTbody.innerHTML = '';
-                    if (donations.length === 0) { donationsTbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-400">No donations found.</td></tr>'; return; }
-                    donations.forEach(d => {
-                        const row = document.createElement('tr');
-                        row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
-                        row.innerHTML = `
-                            <td class="p-4 whitespace-nowrap">${new Date(d.date).toLocaleString()}</td>
-                            <td class="p-4"><p class="font-bold">${d.discordUser}</p><p class="text-sm text-gray-400">${d.inGameName}</p></td>
-                            <td class="p-4 font-semibold">${d.tier} <span class="text-[var(--color-cyan-accent)] font-bold">${d.price}</span></td>
-                            <td class="p-4"><a href="${backendUrl}${d.screenshotUrl}" target="_blank" class="text-[var(--color-cyan-accent)] hover:underline">View Image</a></td>
-                            <td class="p-4"><select class="status-select w-full p-2 rounded-md border text-sm font-semibold bg-gray-700 ${d.status}" data-id="${d._id}"><option value="pending" ${d.status === 'pending' ? 'selected' : ''}>Pending</option><option value="processed" ${d.status === 'processed' ? 'selected' : ''}>Processed</option></select></td>`;
-                        donationsTbody.appendChild(row);
-                    });
-                } catch (error) { donationsTbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-red-400">Failed to load data.</td></tr>'; }
-            };
-
-            donationsTbody.addEventListener('change', async (e) => {
-                if (e.target.classList.contains('status-select')) {
-                    const id = e.target.dataset.id;
-                    const status = e.target.value;
-                    try {
-                        await fetch(`${backendUrl}/api/donations/${id}/status`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ status })
-                        });
-                        fetchDonations();
-                    } catch (error) { alert('Failed to update status.'); }
-                }
-            });
-
-            // --- PLAYER LOOKUP LOGIC ---
-            const lookupForm = document.getElementById('lookup-form');
-            const lookupResultsContainer = document.getElementById('lookup-results');
+        const lookupPlayer = (playerName) => {
+            if (!playerName) return;
             const playerNameInput = document.getElementById('player-name-input');
-            lookupForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const playerName = playerNameInput.value.trim();
-                if (!playerName) return;
-                lookupResultsContainer.classList.remove('hidden');
-                lookupResultsContainer.innerHTML = '<p class="text-center text-lg">Searching...</p>';
-                try {
-                    const response = await fetch(`${backendUrl}/api/player/${playerName}`);
-                    const data = await response.json();
-                    if (!response.ok) { throw new Error(data.message || 'An error occurred'); }
-                    let vehiclesHtml = '<p class="mt-4 text-gray-400">No vehicles found.</p>';
-                    if (data.vehicles && data.vehicles.length > 0) {
-                        vehiclesHtml = `<div class="overflow-x-auto mt-4"><table class="w-full text-left"><thead class="bg-gray-800"><tr><th class="p-3 text-sm font-semibold text-green-400 uppercase">Model ID</th><th class="p-3 text-sm font-semibold text-green-400 uppercase">Tickets</th></tr></thead><tbody>${data.vehicles.map(v => `<tr class="border-b border-gray-800"><td class="p-3">${v.modelid}</td><td class="p-3">${v.tickets}</td></tr>`).join('')}</tbody></table></div>`;
-                    }
-                    lookupResultsContainer.innerHTML = `<div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6"><h3 class="text-2xl font-bold text-white mb-4">Stats for <span class="text-[var(--color-cyan-accent)]">${playerName}</span></h3><div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Level</p><p class="text-2xl font-bold">${data.stats.level}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Hours Played</p><p class="text-2xl font-bold">${data.stats.hours}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Cash</p><p class="text-2xl font-bold text-green-400">$${data.stats.cash.toLocaleString()}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Bank</p><p class="text-2xl font-bold text-green-400">$${data.stats.bank.toLocaleString()}</p></div></div><h4 class="text-xl font-bold text-white mt-6 mb-2">Vehicles</h4>${vehiclesHtml}</div>`;
-                } catch (error) {
-                    lookupResultsContainer.innerHTML = `<p class="text-center text-lg text-red-400">${error.message}</p>`;
-                }
-            });
+            const lookupForm = document.getElementById('lookup-form');
+            playerNameInput.value = playerName;
+            window.location.hash = '#lookup';
+            if (typeof lookupForm.requestSubmit === 'function') {
+                lookupForm.requestSubmit();
+            } else {
+                lookupForm.dispatchEvent(new Event('submit', {cancelable: true, bubbles: true}));
+            }
+        };
 
-            // --- INITIAL PAGE LOAD ---
-            const initialLoad = () => {
-                showPage(window.location.hash || '#dashboard');
-                fetchDashboardStats();
-                fetchPlayers();
-                fetchDonations();
-            };
-            initialLoad();
+        const fetchDashboardStats = async () => {
+             try {
+                const res = await fetch(`${backendUrl}/api/dashboard-stats`);
+                const stats = await res.json();
+                document.getElementById('total-players').textContent = stats.totalPlayers;
+                document.getElementById('players-today').textContent = stats.playersToday;
+                document.getElementById('total-donations').textContent = stats.totalDonations;
+                document.getElementById('pending-donations').textContent = stats.pendingDonations;
+            } catch (error) { console.error('Failed to fetch stats:', error); }
+        };
+
+        const fetchPlayers = async () => {
+            const tbody = document.getElementById('players-tbody');
+            try {
+                const res = await fetch(`${backendUrl}/api/waitlist`);
+                const players = await res.json();
+                tbody.innerHTML = '';
+                if (players.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center p-8 text-gray-400">No applications found.</td></tr>'; return; }
+                players.forEach(p => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-800';
+                    row.innerHTML = `<td class="p-4 whitespace-nowrap">${new Date(p.date).toLocaleString()}</td><td class="p-4"><p class="font-bold">${p.discordUser}</p><p class="text-sm text-gray-400">${p.inGameName}</p></td><td class="p-4">${p.age}</td><td class="p-4 text-sm text-gray-300"><details><summary class="cursor-pointer hover:text-white">View Answers</summary><div class="mt-2 space-y-2 p-3 bg-gray-800 rounded"><p><strong class="text-gray-400">RP Definition:</strong> ${p.rpDefinition}</p><p><strong class="text-gray-400">Powergaming:</strong> ${p.powergaming}</p><p><strong class="text-gray-400">Backstory:</strong> ${p.backstory}</p></div></details></td>`;
+                    tbody.appendChild(row);
+                });
+            } catch (error) { tbody.innerHTML = '<tr><td colspan="4" class="text-center p-8 text-red-400">Failed to load data.</td></tr>'; }
+        };
+        
+        const donationsTbody = document.getElementById('donations-tbody');
+        const fetchDonations = async () => {
+            try {
+                const response = await fetch(`${backendUrl}/api/donations`);
+                const donations = await response.json();
+                donationsTbody.innerHTML = '';
+                if (donations.length === 0) { donationsTbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-400">No donations found.</td></tr>'; return; }
+                donations.forEach(d => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
+                    row.innerHTML = `<td class="p-4 whitespace-nowrap">${new Date(d.date).toLocaleString()}</td><td class="p-4"><p class="font-bold">${d.discordUser}</p><p class="text-sm text-gray-400">${d.inGameName}</p></td><td class="p-4 font-semibold">${d.tier} <span class="text-[var(--color-cyan-accent)] font-bold">${d.price || ''}</span></td><td class="p-4"><a href="${backendUrl}${d.screenshotUrl}" target="_blank" class="text-[var(--color-cyan-accent)] hover:underline">View Image</a></td><td class="p-4"><select class="status-select w-full p-2 rounded-md border text-sm font-semibold bg-gray-700 ${d.status}" data-id="${d._id}"><option value="pending" ${d.status === 'pending' ? 'selected' : ''}>Pending</option><option value="processed" ${d.status === 'processed' ? 'selected' : ''}>Processed</option></select></td>`;
+                    donationsTbody.appendChild(row);
+                });
+            } catch (error) { donationsTbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-red-400">Failed to load data.</td></tr>'; }
+        };
+
+        donationsTbody.addEventListener('change', async (e) => {
+            if (e.target.classList.contains('status-select')) {
+                const id = e.target.dataset.id;
+                const status = e.target.value;
+                try {
+                    await fetch(`${backendUrl}/api/donations/${id}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+                    fetchDonations();
+                } catch (error) { alert('Failed to update status.'); }
+            }
         });
+
+        const fetchAndDisplayLogs = async (logType, page = 1) => {
+            const tbody = document.getElementById(`${logType}-logs-tbody`);
+            const paginationContainer = document.getElementById(`${logType}-logs-pagination`);
+            if (!tbody || !paginationContainer) return;
+            tbody.innerHTML = `<tr><td colspan="2" class="text-center p-8 text-gray-400">Loading logs...</td></tr>`;
+            try {
+                const res = await fetch(`${backendUrl}/api/logs/${logType}?page=${page}`);
+                const data = await res.json();
+                tbody.innerHTML = '';
+                if (!data.logs || data.logs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="2" class="text-center p-8 text-gray-400">No logs found.</td></tr>`;
+                    paginationContainer.innerHTML = '';
+                    return;
+                }
+                data.logs.forEach(log => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-800';
+                    row.innerHTML = `<td class="p-4 whitespace-nowrap text-gray-400">${new Date(log.date).toLocaleString()}</td><td class="p-4 text-white">${log.description}</td>`;
+                    tbody.appendChild(row);
+                });
+                paginationContainer.innerHTML = `<span class="text-sm text-gray-400">Page ${data.currentPage} of ${data.totalPages}</span><div class="flex gap-2"><button class="pagination-btn bg-gray-700 px-4 py-2 rounded-md font-bold hover:bg-gray-600" data-log-type="${logType}" data-page="${data.currentPage - 1}" ${data.currentPage <= 1 ? 'disabled' : ''}>Previous</button><button class="pagination-btn bg-gray-700 px-4 py-2 rounded-md font-bold hover:bg-gray-600" data-log-type="${logType}" data-page="${data.currentPage + 1}" ${data.currentPage >= data.totalPages ? 'disabled' : ''}>Next</button></div>`;
+            } catch (error) { tbody.innerHTML = `<tr><td colspan="2" class="text-center p-8 text-red-400">Failed to load logs.</td></tr>`; }
+        };
+
+        document.getElementById('main-content').addEventListener('click', (e) => {
+            if (e.target.classList.contains('pagination-btn')) {
+                const logType = e.target.dataset.logType;
+                const page = parseInt(e.target.dataset.page);
+                if (logType && page) { fetchAndDisplayLogs(logType, page); }
+            }
+        });
+
+        const fetchOnlinePlayers = async () => {
+            const listContainer = document.getElementById('online-players-list');
+            const countContainer = document.getElementById('online-players-count');
+            try {
+                const response = await fetch(`${backendUrl}/api/online-players`);
+                const players = await response.json();
+                countContainer.textContent = players.length;
+                listContainer.innerHTML = ''; 
+                if (players.length === 0) { listContainer.innerHTML = '<p class="text-gray-400">No players are currently online.</p>'; return; }
+                players.forEach(player => {
+                    const nameEl = document.createElement('p');
+                    nameEl.className = 'online-player-name';
+                    nameEl.textContent = player.username;
+                    nameEl.dataset.playername = player.username;
+                    listContainer.appendChild(nameEl);
+                });
+            } catch (error) { console.error("Failed to fetch online players:", error); }
+        };
+        
+        document.getElementById('online-players-list').addEventListener('click', (e) => {
+            if (e.target && e.target.classList.contains('online-player-name')) { lookupPlayer(e.target.dataset.playername); }
+        });
+
+        let wealthChart, vehiclesChart, circulationHistoryChart;
+        const fetchAndDisplayEconomyStats = async () => {
+            try {
+                const response = await fetch(`${backendUrl}/api/economy-stats`);
+                const data = await response.json();
+
+                document.getElementById('total-circulation').textContent = `$${data.totalCirculation.toLocaleString()}`;
+                document.getElementById('yesterday-circulation').textContent = `$${data.yesterdayCirculation.toLocaleString()}`;
+                document.getElementById('week-ago-circulation').textContent = `$${data.weekAgoCirculation.toLocaleString()}`;
+
+                const changeElement = document.getElementById('circulation-change');
+                if (data.yesterdayCirculation > 0) {
+                    const change = ((data.totalCirculation - data.yesterdayCirculation) / data.yesterdayCirculation) * 100;
+                    changeElement.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}% vs Yesterday`;
+                    changeElement.className = `text-sm font-semibold mt-1 ${change >= 0 ? 'text-green-400' : 'text-red-400'}`;
+                } else {
+                    changeElement.textContent = 'Awaiting yesterday\'s data';
+                    changeElement.className = 'text-sm font-semibold mt-1 text-gray-400';
+                }
+
+                const historyCtx = document.getElementById('circulation-history-chart').getContext('2d');
+                if(circulationHistoryChart) circulationHistoryChart.destroy();
+                const reversedHistory = data.circulationHistory.slice().reverse();
+                circulationHistoryChart = new Chart(historyCtx, { type: 'line', data: { labels: reversedHistory.map(d => new Date(d.snapshot_date).toLocaleDateString()), datasets: [{ label: 'Total Circulation', data: reversedHistory.map(d => d.total_circulation), borderColor: '#00FFFF', backgroundColor: 'rgba(0, 255, 255, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#D1D5DB' } }, x: { ticks: { color: '#D1D5DB' } } } } });
+
+                const wealthCtx = document.getElementById('wealth-chart').getContext('2d');
+                if(wealthChart) wealthChart.destroy();
+                wealthChart = new Chart(wealthCtx, { type: 'doughnut', data: { labels: data.wealthDistribution.map(d => d.wealthBracket), datasets: [{ data: data.wealthDistribution.map(d => d.playerCount), backgroundColor: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444'], borderColor: '#1f2937' }] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: '#D1D5DB' } } } } });
+
+                const vehicleNames = { 411: 'Infernus', 560: 'Sultan', 476: 'Bullet', 559: 'Slamvan', 494: 'Hotring', 541: 'Cheetah', 487: 'Maverick', 562: 'Elegy', 460: 'NRG-500', 522: 'FCR-900' };
+                const vehiclesCtx = document.getElementById('vehicles-chart').getContext('2d');
+                if(vehiclesChart) vehiclesChart.destroy();
+                vehiclesChart = new Chart(vehiclesCtx, { type: 'bar', data: { labels: data.topVehicles.map(v => vehicleNames[v.modelid] || `ID: ${v.modelid}`), datasets: [{ data: data.topVehicles.map(v => v.vehicleCount), backgroundColor: '#00FFFF' }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#D1D5DB' } }, x: { ticks: { color: '#D1D5DB' } } } } });
+
+                const wealthiestPlayersList = document.getElementById('wealthiest-players-list');
+                wealthiestPlayersList.innerHTML = '';
+                data.wealthiestPlayers.forEach((player, index) => { wealthiestPlayersList.innerHTML += `<div class="flex justify-between items-center text-sm"><div><span class="text-gray-400 mr-2">${index + 1}.</span><span class="online-player-name font-semibold" data-playername="${player.username}">${player.username}</span></div><span class="font-bold text-green-400">$${parseInt(player.total_wealth).toLocaleString()}</span></div>`; });
+                
+                const topBusinessesList = document.getElementById('top-businesses-list');
+                topBusinessesList.innerHTML = '';
+                data.topBusinesses.forEach((biz, index) => { topBusinessesList.innerHTML += `<div class="flex justify-between items-center text-sm"><div><span class="text-gray-400 mr-2">${index + 1}.</span><span class="font-semibold">${biz.biz_desc}</span></div><span class="font-bold text-yellow-400">$${biz.cash.toLocaleString()}</span></div>`; });
+
+                const factionTreasuriesList = document.getElementById('faction-treasuries-list');
+                factionTreasuriesList.innerHTML = '';
+                data.factionTreasuries.forEach((faction) => { factionTreasuriesList.innerHTML += `<div class="flex justify-between items-center text-sm"><span class="font-semibold">${faction.name}</span><span class="font-bold text-cyan-400">$${faction.faction_treasury.toLocaleString()}</span></div>`; });
+
+                wealthiestPlayersList.addEventListener('click', (e) => {
+                    if (e.target && e.target.classList.contains('online-player-name')) { lookupPlayer(e.target.dataset.playername); }
+                });
+
+            } catch (error) { console.error("Failed to fetch economy stats:", error); }
+        };
+
+        const lookupForm = document.getElementById('lookup-form');
+        const lookupResultsContainer = document.getElementById('lookup-results');
+        lookupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const playerName = document.getElementById('player-name-input').value.trim();
+            if (!playerName) return;
+            lookupResultsContainer.classList.remove('hidden');
+            lookupResultsContainer.innerHTML = '<p class="text-center text-lg">Searching...</p>';
+            try {
+                const response = await fetch(`${backendUrl}/api/player/${playerName}`);
+                const data = await response.json();
+                if (!response.ok) { throw new Error(data.message || 'An error occurred'); }
+                const s = data.stats;
+                let vehiclesHtml = '<p class="text-gray-400">No vehicles found.</p>';
+                if (data.vehicles && data.vehicles.length > 0) {
+                    vehiclesHtml = `<div class="overflow-x-auto mt-2"><table class="w-full text-left"><thead class="bg-gray-800"><tr><th class="p-3 text-sm font-semibold text-green-400 uppercase">Model ID</th><th class="p-3 text-sm font-semibold text-green-400 uppercase">Tickets</th></tr></thead><tbody>${data.vehicles.map(v => `<tr class="border-b border-gray-800"><td class="p-3">${v.modelid}</td><td class="p-3">${v.tickets}</td></tr>`).join('')}</tbody></table></div>`;
+                }
+                let propertyLogsHtml = '<p class="text-gray-400">No property logs found for this player.</p>';
+                if (data.propertyLogs && data.propertyLogs.length > 0) {
+                    propertyLogsHtml = `<ul class="list-disc list-inside mt-2 space-y-1 text-gray-300 text-sm h-48 overflow-y-auto">${data.propertyLogs.map(log => `<li>${log.description}</li>`).join('')}</ul>`;
+                }
+                lookupResultsContainer.innerHTML = `<div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6"><h3 class="text-2xl font-bold text-white mb-6">Records for <span class="text-[var(--color-cyan-accent)]">${playerName}</span></h3><div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6"><div class="space-y-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Faction</p><p class="text-xl font-bold">${s.factionName} (Rank: ${s.factionrank})</p></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Level</p><p class="text-2xl font-bold">${s.level}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Hours Played</p><p class="text-2xl font-bold">${s.hours}</p></div></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Cash</p><p class="text-2xl font-bold text-green-400">$${s.cash.toLocaleString()}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Bank</p><p class="text-2xl font-bold text-green-400">$${s.bank.toLocaleString()}</p></div></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Fleeca Bank</p><p class="text-2xl font-bold text-cyan-400">$${s.fleeca_bank.toLocaleString()}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Crimes</p><p class="text-2xl font-bold text-red-400">${s.crimes}</p></div></div></div><div class="space-y-6"><div><h4 class="text-xl font-bold text-white">Vehicles</h4>${vehiclesHtml}</div><div><h4 class="text-xl font-bold text-white">Property Logs</h4>${propertyLogsHtml}</div></div></div></div>`;
+            } catch (error) { lookupResultsContainer.innerHTML = `<p class="text-center text-lg text-red-400">${error.message}</p>`; }
+        });
+
+        const initialLoad = () => {
+            showPage(window.location.hash || '#dashboard');
+            fetchDashboardStats();
+            fetchPlayers();
+            fetchDonations();
+            fetchAndDisplayLogs('admin');
+            fetchAndDisplayLogs('faction');
+            fetchAndDisplayLogs('gang');
+            fetchOnlinePlayers();
+            fetchAndDisplayEconomyStats();
+            setInterval(fetchOnlinePlayers, 30000);
+        };
+        initialLoad();
+    });
     </script>
 </body>
 </html>
