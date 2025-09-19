@@ -4,18 +4,18 @@ const path = require('path');
 const cors = require('cors');
 const { MongoClient, ObjectId } = require('mongodb');
 const mysql = require('mysql2/promise');
-const cron = require('node-cron');
+const cron = require('node-cron'); // ADDED FOR SCHEDULING
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// --- CREDENTIALS & CONFIGURATION ---
+// --- CREDENTIALS ---
 const DONATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014006836199526/OE4J0sWbDSxcePTAH0qgE8JKa5BDTS5Zj0YpjNcTu55dcA5oI3j7WVUM7zzbasF-GHK5";
 const APPLICATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014141452386405/6zo3kwZ24-RakI_btJN8kiegGnuwkSvN5SPmBeQJ9j_Wv2IsE3mpZGLf4KgOY_h1Z2X3";
 const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
 const FACTION_LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
 const GANG_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418402752211451944/XT6G-Q96LobSbmoubUJ3QBxux9E9F1f3oBklBQ28ztE06SYE4jXdvnLmvPMJKe6wfP1T";
-const EVENTS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418604487060226179/N1MoYe7h7wkwsIQjaQ9Nb6Vn4lYmTJ0a2QvJwh1CG3RyCGOVFOyBcPkiWWyhUCJ2YCvK";
+const EVENTS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418604487060226179/N1MoYe7h7wkwsIQjaQ9Nb6Vn4lYmTJ0a2QvJwh1CG3RyCGOVFOyBcPkiWWyhUCJ2YCvK"; // <<<--- ADD THIS LINE AND YOUR WEBHOOK URL
 
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp";
 const DB_NAME = "nigeria-vibe-rp";
@@ -31,13 +31,6 @@ const sampDbOptions = {
     connectionLimit: 10,
     queueLimit: 0
 };
-
-// --- USER ROLES ---
-const USERS = [
-    { username: "nvrpadmin", password: "passwordnvrp", role: "admin" },
-    { username: "eventmanager", password: "nvrpeventpass", role: "event" },
-    { username: "economymanager", password: "nvrpecopass", role: "economy" }
-];
 
 // --- DATABASE CONNECTIONS ---
 async function connectToMongo() {
@@ -70,7 +63,7 @@ function getFactionName(factionId) {
         case 2: return "Medic/Fire";
         case 4: return "Government";
         case 5: return "Mechanic";
-        case 16: return "EFCC";
+        case 11: return "EFCC";
         default: return "Civilian";
     }
 }
@@ -96,6 +89,8 @@ async function sendToDiscord(webhookUrl, embed) {
 }
 
 // --- CONFIGURATION & MIDDLEWARE ---
+const ADMIN_USERNAME = "adminnvrp";
+const ADMIN_PASSWORD = "password1234";
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -110,14 +105,12 @@ const upload = multer({ storage: storage }).single('screenshot');
 // --- API ROUTES ---
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    const user = USERS.find(u => u.username === username && u.password === password);
-    if (user) {
-        res.json({ success: true, message: 'Login successful', role: user.role });
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        res.json({ success: true, message: 'Login successful' });
     } else {
         res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 });
-
 
 app.post('/api/donations', (req, res) => {
     upload(req, res, async (err) => {
@@ -204,19 +197,6 @@ app.get('/api/online-players', async (req, res) => {
     }
 });
 
-app.get('/api/all-players', async (req, res) => {
-    if (!sampDbPool) {
-        return res.status(503).json({ message: "Game database is not connected." });
-    }
-    try {
-        const [rows] = await sampDbPool.query("SELECT `username` FROM `users`");
-        res.json(rows.map(r => r.username));
-    } catch (error) {
-        console.error("MySQL Get All Players Error:", error);
-        res.status(500).json({ message: "Failed to fetch all players." });
-    }
-});
-
 app.get('/api/logs/:type', async (req, res) => {
     const validTypes = { admin: 'log_admin', faction: 'log_faction', gang: 'log_gang' };
     const logType = req.params.type;
@@ -236,7 +216,7 @@ app.get('/api/logs/:type', async (req, res) => {
     }
 });
 
-// --- ECONOMY ENDPOINT ---
+// --- ECONOMY ENDPOINT (UPDATED FOR HISTORY & LEADERBOARDS) ---
 app.get('/api/economy-stats', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     try {
@@ -256,7 +236,7 @@ app.get('/api/economy-stats', async (req, res) => {
             sampDbPool.query("SELECT gov_treasury FROM settings")
         ];
 
-        const results = await Promise.all(queries.map(p => p.catch(e => [[]]))); 
+        const results = await Promise.all(queries.map(p => p.catch(e => [[]]))); // Safer Promise handling
 
         const playerWealth = results[0][0][0] || { totalPlayerCash: 0, totalPlayerBank: 0 };
         const wealthDistribution = results[1][0] || [];
@@ -296,8 +276,6 @@ app.get('/api/economy-stats', async (req, res) => {
     }
 });
 
-
-// --- EVENT MANAGEMENT ROUTES ---
 app.get('/api/events', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     try {
@@ -313,7 +291,7 @@ app.post('/api/events', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     const { title, description, event_date, announcement_date } = req.body;
     try {
-        await sampDbPool.query("INSERT INTO `events` (`title`, `description`, `event_date`, `announcement_date`) VALUES (?, ?, ?, ?)", [title, description, event_date, announcement_date || null]);
+        await sampDbPool.query("INSERT INTO `events` (`title`, `description`, `event_date`, `announcement_date`) VALUES (?, ?, ?, ?)", [title, description, event_date, announcement_date]);
         res.status(201).json({ message: 'Event created successfully!' });
     } catch (error) {
         console.error("MySQL Create Event Error:", error);
@@ -337,13 +315,9 @@ app.post('/api/pay-winner', async (req, res) => {
     const { playerName, amount, reason } = req.body;
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
-        const [updateResult] = await sampDbPool.query("UPDATE `users` SET `bank` = `bank` + ? WHERE `username` = ?", [amount, playerName]);
-        if(updateResult.affectedRows > 0){
-            await sampDbPool.query("INSERT INTO `log_admin` (`date`, `description`) VALUES (NOW(), ?)", [`[EVENT] Paid ${playerName} $${parseInt(amount).toLocaleString()} for: ${reason}`]);
-             res.json({ message: 'Payment successful!' });
-        } else {
-             res.status(404).json({ message: "Player not found." });
-        }
+        await sampDbPool.query("UPDATE `users` SET `bank` = `bank` + ? WHERE `username` = ?", [amount, playerName]);
+        await sampDbPool.query("INSERT INTO `log_admin` (`date`, `description`) VALUES (NOW(), ?)", [`Paid ${playerName} $${amount} for ${reason}`]);
+        res.json({ message: 'Payment successful!' });
     } catch (error) {
         console.error("MySQL Pay Winner Error:", error);
         res.status(500).json({ message: "Failed to pay winner." });
@@ -377,17 +351,12 @@ app.get('/api/random-player', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
         const [rows] = await sampDbPool.query("SELECT `username` FROM `users` ORDER BY RAND() LIMIT 1");
-        if(rows.length > 0){
-             res.json(rows[0]);
-        } else {
-            res.status(404).json({ message: "No players found in the database." });
-        }
+        res.json(rows[0]);
     } catch (error) {
         console.error("MySQL Get Random Player Error:", error);
         res.status(500).json({ message: "Failed to fetch random player." });
     }
 });
-
 
 // --- SERVER AND CRON JOB START ---
 Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
@@ -414,31 +383,26 @@ Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
                 console.error("Error running economy snapshot job:", err);
             }
         });
-
+        
         // --- SCHEDULED DISCORD ANNOUNCEMENTS ---
         console.log("Discord announcement job scheduled to run every minute.");
         cron.schedule('* * * * *', async () => {
-            try {
-                if (!sampDbPool) { return; }
-                const [events] = await sampDbPool.query("SELECT * FROM `events` WHERE `sent` = 0 AND `announcement_date` IS NOT NULL AND `announcement_date` <= NOW()");
-                for (const event of events) {
-                        const eventEmbed = {
-                            title: `🔔 Upcoming Event: ${event.title}`,
-                            description: event.description,
-                            color: 0x5865F2, // Discord Blurple
-                            fields: [
-                                { name: "Event Date & Time", value: new Date(event.event_date).toLocaleString('en-US', { timeZone: 'Africa/Lagos' }) }
-                            ],
-                            footer: { text: "Mark your calendars!" }
-                        };
-                        sendToDiscord(EVENTS_WEBHOOK_URL, eventEmbed);
-                        await sampDbPool.query("UPDATE `events` SET `sent` = 1 WHERE `id` = ?", [event.id]);
-                        console.log(`Sent announcement for event: ${event.title}`);
+            if (!sampDbPool) { return; }
+            const [events] = await sampDbPool.query("SELECT * FROM `events` WHERE `sent` = 0");
+            for (const event of events) {
+                if (new Date(event.announcement_date) <= new Date()) {
+                    const eventEmbed = {
+                        title: `Upcoming Event: ${event.title}`,
+                        description: event.description,
+                        color: 0x00FF00,
+                        footer: { text: `Event Date: ${new Date(event.event_date).toLocaleString()}` }
+                    };
+                    sendToDiscord(EVENTS_WEBHOOK_URL, eventEmbed);
+                    await sampDbPool.query("UPDATE `events` SET `sent` = 1 WHERE `id` = ?", [event.id]);
                 }
-            } catch(e){
-                console.error("Error in announcement cron job:", e);
             }
         });
+
     });
 }).catch(err => {
     console.error("Failed to initialize databases and start server.", err);
