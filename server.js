@@ -4,6 +4,7 @@ const path = require('path');
 const cors = require('cors');
 const { MongoClient, ObjectId } = require('mongodb');
 const mysql = require('mysql2/promise');
+const cron = require('node-cron'); // ADDED FOR SCHEDULING
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 const DONATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014006836199526/OE4J0sWbDSxcePTAH0qgE8JKa5BDTS5Zj0YpjNcTu55dcA5oI3j7WVUM7zzbasF-GHK5";
 const APPLICATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014141452386405/6zo3kwZ24-RakI_btJN8kiegGnuwkSvN5SPmBeQJ9j_Wv2IsE3mpZGLf4KgOY_h1Z2X3";
 const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
-const FACTION_LOG_WEBHOOK_URL = "YOUR_FACTION_LOG_WEBHOOK_URL_HERE";
+const FACTION_LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
 const GANG_LOG_WEBHOOK_URL = "YOUR_GANG_LOG_WEBHOOK_URL_HERE";
 
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp";
@@ -214,7 +215,7 @@ app.get('/api/logs/:type', async (req, res) => {
     }
 });
 
-// --- ECONOMY ENDPOINT (REVISED AND MORE ROBUST) ---
+// --- ECONOMY ENDPOINT (UPDATED FOR HISTORY & LEADERBOARDS) ---
 app.get('/api/economy-stats', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     try {
@@ -227,13 +228,14 @@ app.get('/api/economy-stats', async (req, res) => {
             sampDbPool.query("SELECT SUM(cash) as totalBusinessCash FROM businesses"),
             sampDbPool.query("SELECT username, (cash + bank) as total_wealth FROM users ORDER BY total_wealth DESC LIMIT 10"),
             sampDbPool.query("SELECT name, cash FROM businesses WHERE ownerid != 0 ORDER BY cash DESC LIMIT 10"),
-            sampDbPool.query("SELECT name, faction_treasury FROM factions ORDER BY faction_treasury DESC")
+            sampDbPool.query("SELECT name, faction_treasury FROM factions ORDER BY faction_treasury DESC"),
+            sampDbPool.query("SELECT total_circulation FROM economy_snapshots WHERE snapshot_date = CURDATE() - INTERVAL 1 DAY"),
+            sampDbPool.query("SELECT total_circulation FROM economy_snapshots WHERE snapshot_date = CURDATE() - INTERVAL 7 DAY"),
+            sampDbPool.query("SELECT snapshot_date, total_circulation FROM economy_snapshots ORDER BY snapshot_date DESC LIMIT 30")
         ];
 
-        const results = await Promise.all(queries);
+        const results = await Promise.all(queries.map(p => p.catch(e => [[]]))); // Safer Promise handling
 
-        // --- ROBUST DATA HANDLING ---
-        // This new way of getting data is safer and won't crash if a query returns nothing.
         const playerWealth = results[0][0][0] || { totalPlayerCash: 0, totalPlayerBank: 0 };
         const wealthDistribution = results[1][0] || [];
         const topVehicles = results[2][0] || [];
@@ -243,6 +245,9 @@ app.get('/api/economy-stats', async (req, res) => {
         const wealthiestPlayers = results[6][0] || [];
         const topBusinesses = results[7][0] || [];
         const factionTreasuries = results[8][0] || [];
+        const yesterdayData = results[9][0][0] || { total_circulation: 0 };
+        const weekAgoData = results[10][0][0] || { total_circulation: 0 };
+        const historyData = results[11][0] || [];
         
         const cashNum = parseInt(playerWealth.totalPlayerCash) || 0;
         const bankNum = parseInt(playerWealth.totalPlayerBank) || 0;
@@ -251,14 +256,14 @@ app.get('/api/economy-stats', async (req, res) => {
             totalCirculation: cashNum + bankNum,
             totalPlayerCash: cashNum,
             totalPlayerBank: bankNum,
-            wealthDistribution,
-            topVehicles,
+            wealthDistribution, topVehicles,
             ownedBusinesses: ownedBusinessesCount.ownedBusinesses,
             totalBusinesses: totalBusinessesCount.totalBusinesses,
             totalBusinessCash: totalBusinessCashSum.totalBusinessCash || 0,
-            wealthiestPlayers,
-            topBusinesses,
-            factionTreasuries
+            wealthiestPlayers, topBusinesses, factionTreasuries,
+            yesterdayCirculation: parseInt(yesterdayData.total_circulation) || 0,
+            weekAgoCirculation: parseInt(weekAgoData.total_circulation) || 0,
+            circulationHistory: historyData
         });
 
     } catch (error) {
@@ -267,9 +272,33 @@ app.get('/api/economy-stats', async (req, res) => {
     }
 });
 
-// --- START SERVER ---
+// --- SERVER AND CRON JOB START ---
 Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
-    app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+    app.listen(PORT, () => {
+        console.log(`Server started on port ${PORT}`);
+
+        // --- SCHEDULED DAILY ECONOMY SNAPSHOT ---
+        console.log("Economy snapshot job scheduled for 23:59 daily.");
+        cron.schedule('59 23 * * *', async () => {
+            console.log(`[${new Date().toLocaleString()}] Running daily economy snapshot job...`);
+            try {
+                if (!sampDbPool) { console.log('Database not connected, skipping snapshot.'); return; }
+                
+                const [[{ total }]] = await sampDbPool.query("SELECT SUM(cash + bank) as total FROM users");
+                const totalCirculation = parseInt(total) || 0;
+
+                await sampDbPool.query(
+                    "INSERT INTO economy_snapshots (snapshot_date, total_circulation) VALUES (CURDATE(), ?) ON DUPLICATE KEY UPDATE total_circulation = ?",
+                    [totalCirculation, totalCirculation]
+                );
+                console.log(`Successfully saved economy snapshot: $${totalCirculation.toLocaleString()}`);
+
+            } catch (err) {
+                console.error("Error running economy snapshot job:", err);
+            }
+        });
+    });
 }).catch(err => {
     console.error("Failed to initialize databases and start server.", err);
 });
+
