@@ -227,7 +227,7 @@ app.get('/api/economy-stats', async (req, res) => {
             sampDbPool.query("SELECT SUM(cash) as totalBusinessCash FROM businesses"),
             sampDbPool.query("SELECT username, (cash + bank) as total_wealth FROM users ORDER BY total_wealth DESC LIMIT 10"),
             sampDbPool.query("SELECT name, cash FROM businesses WHERE ownerid != 0 ORDER BY cash DESC LIMIT 10"),
-            sampDbPool.query("SELECT faction_name, faction_treasury FROM factions ORDER BY faction_treasury DESC")
+            sampDbPool.query("SELECT name, faction_treasury FROM factions ORDER BY faction_treasury DESC")
         ];
 
         const results = await Promise.all(queries);
