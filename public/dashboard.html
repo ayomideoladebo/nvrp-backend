@@ -37,6 +37,9 @@
             <a href="#economy" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
                 <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg> Economy
             </a>
+            <a href="#events" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Events
+            </a>
             <a href="#lookup" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
                 <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg> Player Lookup
             </a>
@@ -90,19 +93,23 @@
             
             <section id="economy" class="page-content hidden">
                 <h2 class="text-4xl font-extrabold text-glow-green mb-8">Economy Dashboard</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                     <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
                         <p class="text-sm text-gray-400">Live Total Circulation</p>
-                        <p id="total-circulation" class="text-4xl font-bold text-green-400">$0</p>
+                        <p id="total-circulation" class="text-4xl font-bold text-green-400">₦0</p>
                         <p id="circulation-change" class="text-sm font-semibold mt-1">&nbsp;</p>
                     </div>
                     <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
                         <p class="text-sm text-gray-400">Yesterday's Circulation</p>
-                        <p id="yesterday-circulation" class="text-4xl font-bold text-gray-300">$0</p>
+                        <p id="yesterday-circulation" class="text-4xl font-bold text-gray-300">₦0</p>
                     </div>
                     <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
                         <p class="text-sm text-gray-400">7 Days Ago</p>
-                        <p id="week-ago-circulation" class="text-4xl font-bold text-gray-300">$0</p>
+                        <p id="week-ago-circulation" class="text-4xl font-bold text-gray-300">₦0</p>
+                    </div>
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg col-span-1 md:col-span-2 lg:col-span-1">
+                        <p class="text-sm text-gray-400">Government Treasury</p>
+                        <p id="government-treasury" class="text-4xl font-bold text-cyan-400">₦0</p>
                     </div>
                 </div>
                 <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg mb-8">
@@ -129,6 +136,86 @@
                 </div>
             </section>
 
+            <section id="events" class="page-content hidden">
+                <h2 class="text-4xl font-extrabold text-glow-green mb-8">Event Management</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg mb-8">
+                            <h3 class="text-xl font-bold mb-4">Schedule Event</h3>
+                            <form id="event-form">
+                                <div class="mb-4">
+                                    <label for="event-title" class="block text-sm font-semibold text-gray-400 mb-2">Event Title</label>
+                                    <input type="text" id="event-title" required class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none">
+                                </div>
+                                <div class="mb-4">
+                                    <label for="event-description" class="block text-sm font-semibold text-gray-400 mb-2">Description/Rules</label>
+                                    <textarea id="event-description" rows="4" required class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none"></textarea>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label for="event-date" class="block text-sm font-semibold text-gray-400 mb-2">Event Date & Time</label>
+                                        <input type="datetime-local" id="event-date" required class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none">
+                                    </div>
+                                    <div>
+                                        <label for="announcement-date" class="block text-sm font-semibold text-gray-400 mb-2">Announcement Date & Time</label>
+                                        <input type="datetime-local" id="announcement-date" class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none">
+                                    </div>
+                                </div>
+                                <button type="submit" class="w-full bg-[var(--color-green-accent)] text-black px-6 py-3 rounded-md font-bold hover:bg-[var(--color-green-accent)]/80">Schedule</button>
+                            </form>
+                        </div>
+                        <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
+                            <h3 class="text-xl font-bold mb-4">Quick Tools</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <h4 class="font-semibold text-gray-300 mb-2">Quick Announcement</h4>
+                                    <form id="quick-announcement-form" class="flex items-center gap-4">
+                                        <input type="text" id="quick-announcement-input" placeholder="Announcement text" required class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none">
+                                        <button type="submit" class="bg-[var(--color-cyan-accent)] text-black px-6 py-3 rounded-md font-bold hover:bg-[var(--color-cyan-accent)]/80 flex-shrink-0">Send</button>
+                                    </form>
+                                </div>
+                                <hr class="border-gray-700">
+                                <div>
+                                    <h4 class="font-semibold text-gray-300 mb-2">Pay Winner</h4>
+                                    <form id="pay-winner-form" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <input type="text" id="pay-winner-name" placeholder="Player Name" required class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none">
+                                        <input type="number" id="pay-winner-amount" placeholder="Amount" required class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none">
+                                        <input type="text" id="pay-winner-reason" placeholder="Reason" required class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none">
+                                        <div class="md:col-span-3">
+                                            <button type="submit" class="w-full bg-[var(--color-green-accent)] text-black px-6 py-3 rounded-md font-bold hover:bg-[var(--color-green-accent)]/80">Pay</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <hr class="border-gray-700">
+                                <div>
+                                    <h4 class="font-semibold text-gray-300 mb-2">Manual Event Log</h4>
+                                    <form id="event-log-form">
+                                        <textarea id="event-log-summary" rows="3" placeholder="Event summary" required class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none mb-4"></textarea>
+                                        <button type="submit" class="w-full bg-[var(--color-green-accent)] text-black px-6 py-3 rounded-md font-bold hover:bg-[var(--color-green-accent)]/80">Save Log</button>
+                                    </form>
+                                </div>
+                                <hr class="border-gray-700">
+                                <div>
+                                    <h4 class="font-semibold text-gray-300 mb-2">Participant Raffle</h4>
+                                    <button id="raffle-btn" class="w-full bg-[var(--color-cyan-accent)] text-black px-6 py-3 rounded-md font-bold hover:bg-[var(--color-cyan-accent)]/80">Draw Random Player</button>
+                                    <div id="raffle-winner" class="mt-4 text-center text-lg font-bold"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg mb-8">
+                            <h3 class="text-xl font-bold mb-4">Scheduled Events</h3>
+                            <div id="events-list" class="space-y-4"></div>
+                        </div>
+                        <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
+                            <h3 class="text-xl font-bold mb-4">Recent Event Logs</h3>
+                            <div id="event-logs-list" class="space-y-4"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
             <section id="lookup" class="page-content hidden">
                  <h2 class="text-4xl font-extrabold text-glow-green mb-8">Player In-Game Lookup</h2>
                  <form id="lookup-form" class="flex items-center gap-4 mb-8">
@@ -319,9 +406,11 @@
                 const response = await fetch(`${backendUrl}/api/economy-stats`);
                 const data = await response.json();
 
-                document.getElementById('total-circulation').textContent = `$${data.totalCirculation.toLocaleString()}`;
-                document.getElementById('yesterday-circulation').textContent = `$${data.yesterdayCirculation.toLocaleString()}`;
-                document.getElementById('week-ago-circulation').textContent = `$${data.weekAgoCirculation.toLocaleString()}`;
+                document.getElementById('total-circulation').textContent = `₦${data.totalCirculation.toLocaleString()}`;
+                document.getElementById('yesterday-circulation').textContent = `₦${data.yesterdayCirculation.toLocaleString()}`;
+                document.getElementById('week-ago-circulation').textContent = `₦${data.weekAgoCirculation.toLocaleString()}`;
+                document.getElementById('government-treasury').textContent = `₦${data.governmentTreasury.toLocaleString()}`;
+
 
                 const changeElement = document.getElementById('circulation-change');
                 if (data.yesterdayCirculation > 0) {
@@ -349,15 +438,15 @@
 
                 const wealthiestPlayersList = document.getElementById('wealthiest-players-list');
                 wealthiestPlayersList.innerHTML = '';
-                data.wealthiestPlayers.forEach((player, index) => { wealthiestPlayersList.innerHTML += `<div class="flex justify-between items-center text-sm"><div><span class="text-gray-400 mr-2">${index + 1}.</span><span class="online-player-name font-semibold" data-playername="${player.username}">${player.username}</span></div><span class="font-bold text-green-400">$${parseInt(player.total_wealth).toLocaleString()}</span></div>`; });
+                data.wealthiestPlayers.forEach((player, index) => { wealthiestPlayersList.innerHTML += `<div class="flex justify-between items-center text-sm"><div><span class="text-gray-400 mr-2">${index + 1}.</span><span class="online-player-name font-semibold" data-playername="${player.username}">${player.username}</span></div><span class="font-bold text-green-400">₦${parseInt(player.total_wealth).toLocaleString()}</span></div>`; });
                 
                 const topBusinessesList = document.getElementById('top-businesses-list');
                 topBusinessesList.innerHTML = '';
-                data.topBusinesses.forEach((biz, index) => { topBusinessesList.innerHTML += `<div class="flex justify-between items-center text-sm"><div><span class="text-gray-400 mr-2">${index + 1}.</span><span class="font-semibold">${biz.biz_desc}</span></div><span class="font-bold text-yellow-400">$${biz.cash.toLocaleString()}</span></div>`; });
+                data.topBusinesses.forEach((biz, index) => { topBusinessesList.innerHTML += `<div class="flex justify-between items-center text-sm"><div><span class="text-gray-400 mr-2">${index + 1}.</span><span class="font-semibold">${biz.biz_desc}</span></div><span class="font-bold text-yellow-400">₦${biz.cash.toLocaleString()}</span></div>`; });
 
                 const factionTreasuriesList = document.getElementById('faction-treasuries-list');
                 factionTreasuriesList.innerHTML = '';
-                data.factionTreasuries.forEach((faction) => { factionTreasuriesList.innerHTML += `<div class="flex justify-between items-center text-sm"><span class="font-semibold">${faction.name}</span><span class="font-bold text-cyan-400">$${faction.faction_treasury.toLocaleString()}</span></div>`; });
+                data.factionTreasuries.forEach((faction) => { factionTreasuriesList.innerHTML += `<div class="flex justify-between items-center text-sm"><span class="font-semibold">${faction.name}</span><span class="font-bold text-cyan-400">₦${faction.faction_treasury.toLocaleString()}</span></div>`; });
 
                 wealthiestPlayersList.addEventListener('click', (e) => {
                     if (e.target && e.target.classList.contains('online-player-name')) { lookupPlayer(e.target.dataset.playername); }
@@ -387,8 +476,154 @@
                 if (data.propertyLogs && data.propertyLogs.length > 0) {
                     propertyLogsHtml = `<ul class="list-disc list-inside mt-2 space-y-1 text-gray-300 text-sm h-48 overflow-y-auto">${data.propertyLogs.map(log => `<li>${log.description}</li>`).join('')}</ul>`;
                 }
-                lookupResultsContainer.innerHTML = `<div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6"><h3 class="text-2xl font-bold text-white mb-6">Records for <span class="text-[var(--color-cyan-accent)]">${playerName}</span></h3><div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6"><div class="space-y-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Faction</p><p class="text-xl font-bold">${s.factionName} (Rank: ${s.factionrank})</p></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Level</p><p class="text-2xl font-bold">${s.level}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Hours Played</p><p class="text-2xl font-bold">${s.hours}</p></div></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Cash</p><p class="text-2xl font-bold text-green-400">$${s.cash.toLocaleString()}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Bank</p><p class="text-2xl font-bold text-green-400">$${s.bank.toLocaleString()}</p></div></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Fleeca Bank</p><p class="text-2xl font-bold text-cyan-400">$${s.fleeca_bank.toLocaleString()}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Crimes</p><p class="text-2xl font-bold text-red-400">${s.crimes}</p></div></div></div><div class="space-y-6"><div><h4 class="text-xl font-bold text-white">Vehicles</h4>${vehiclesHtml}</div><div><h4 class="text-xl font-bold text-white">Property Logs</h4>${propertyLogsHtml}</div></div></div></div>`;
+                lookupResultsContainer.innerHTML = `<div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6"><h3 class="text-2xl font-bold text-white mb-6">Records for <span class="text-[var(--color-cyan-accent)]">${playerName}</span></h3><div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6"><div class="space-y-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Faction</p><p class="text-xl font-bold">${s.factionName} (Rank: ${s.factionrank})</p></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Level</p><p class="text-2xl font-bold">${s.level}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Hours Played</p><p class="text-2xl font-bold">${s.hours}</p></div></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Cash</p><p class="text-2xl font-bold text-green-400">₦${s.cash.toLocaleString()}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Bank</p><p class="text-2xl font-bold text-green-400">₦${s.bank.toLocaleString()}</p></div></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Fleeca Bank</p><p class="text-2xl font-bold text-cyan-400">₦${s.fleeca_bank.toLocaleString()}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Crimes</p><p class="text-2xl font-bold text-red-400">${s.crimes}</p></div></div></div><div class="space-y-6"><div><h4 class="text-xl font-bold text-white">Vehicles</h4>${vehiclesHtml}</div><div><h4 class="text-xl font-bold text-white">Property Logs</h4>${propertyLogsHtml}</div></div></div></div>`;
             } catch (error) { lookupResultsContainer.innerHTML = `<p class="text-center text-lg text-red-400">${error.message}</p>`; }
+        });
+
+        const fetchEvents = async () => {
+            const eventsList = document.getElementById('events-list');
+            try {
+                const response = await fetch(`${backendUrl}/api/events`);
+                const events = await response.json();
+                eventsList.innerHTML = '';
+                if (events.length === 0) {
+                    eventsList.innerHTML = '<p class="text-gray-400">No events scheduled.</p>';
+                    return;
+                }
+                events.forEach(event => {
+                    const eventEl = document.createElement('div');
+                    eventEl.className = 'bg-gray-800 p-4 rounded-lg';
+                    eventEl.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <p class="font-bold">${event.title}</p>
+                            <button class="text-red-400 hover:text-red-300 delete-event-btn" data-id="${event.id}">&times;</button>
+                        </div>
+                        <p class="text-sm text-gray-400">${event.description}</p>
+                        <p class="text-xs text-gray-500 mt-2">Event Date: ${new Date(event.event_date).toLocaleString()}</p>
+                        <p class="text-xs text-gray-500">Announcement Date: ${new Date(event.announcement_date).toLocaleString()}</p>
+                    `;
+                    eventsList.appendChild(eventEl);
+                });
+            } catch (error) {
+                console.error('Failed to fetch events:', error);
+                eventsList.innerHTML = '<p class="text-red-400">Failed to load events.</p>';
+            }
+        };
+
+        const fetchEventLogs = async () => {
+            const eventLogsList = document.getElementById('event-logs-list');
+            try {
+                const response = await fetch(`${backendUrl}/api/event-logs`);
+                const eventLogs = await response.json();
+                eventLogsList.innerHTML = '';
+                if (eventLogs.length === 0) {
+                    eventLogsList.innerHTML = '<p class="text-gray-400">No event logs.</p>';
+                    return;
+                }
+                eventLogs.forEach(log => {
+                    const logEl = document.createElement('div');
+                    logEl.className = 'bg-gray-800 p-4 rounded-lg';
+                    logEl.innerHTML = `
+                        <p class="text-sm text-gray-400">${log.summary}</p>
+                        <p class="text-xs text-gray-500 mt-2">${new Date(log.date).toLocaleString()}</p>
+                    `;
+                    eventLogsList.appendChild(logEl);
+                });
+            } catch (error) {
+                console.error('Failed to fetch event logs:', error);
+                eventLogsList.innerHTML = '<p class="text-red-400">Failed to load event logs.</p>';
+            }
+        };
+
+        document.getElementById('event-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('event-title').value;
+            const description = document.getElementById('event-description').value;
+            const event_date = document.getElementById('event-date').value;
+            const announcement_date = document.getElementById('announcement-date').value;
+            try {
+                await fetch(`${backendUrl}/api/events`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description, event_date, announcement_date })
+                });
+                fetchEvents();
+            } catch (error) {
+                alert('Failed to schedule event.');
+            }
+        });
+        
+        document.getElementById('events-list').addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-event-btn')) {
+                const id = e.target.dataset.id;
+                try {
+                    await fetch(`${backendUrl}/api/events/${id}`, { method: 'DELETE' });
+                    fetchEvents();
+                } catch (error) {
+                    alert('Failed to delete event.');
+                }
+            }
+        });
+
+        document.getElementById('quick-announcement-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = document.getElementById('quick-announcement-input').value;
+            const embed = {
+                title: 'Announcement',
+                description: text,
+                color: 0x00BFFF
+            };
+            try {
+                await fetch(`${backendUrl}/api/quick-announcement`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ embed })
+                });
+            } catch (error) {
+                alert('Failed to send announcement.');
+            }
+        });
+        
+        document.getElementById('pay-winner-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const playerName = document.getElementById('pay-winner-name').value;
+            const amount = document.getElementById('pay-winner-amount').value;
+            const reason = document.getElementById('pay-winner-reason').value;
+            try {
+                await fetch(`${backendUrl}/api/pay-winner`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ playerName, amount, reason })
+                });
+                alert('Payment successful!');
+            } catch (error) {
+                alert('Failed to pay winner.');
+            }
+        });
+
+        document.getElementById('event-log-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const summary = document.getElementById('event-log-summary').value;
+            try {
+                await fetch(`${backendUrl}/api/event-log`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ summary })
+                });
+                fetchEventLogs();
+            } catch (error) {
+                alert('Failed to save event log.');
+            }
+        });
+        
+        document.getElementById('raffle-btn').addEventListener('click', async () => {
+            try {
+                const response = await fetch(`${backendUrl}/api/random-player`);
+                const player = await response.json();
+                document.getElementById('raffle-winner').textContent = `Winner: ${player.username}`;
+            } catch (error) {
+                alert('Failed to draw a winner.');
+            }
         });
 
         const initialLoad = () => {
@@ -401,6 +636,8 @@
             fetchAndDisplayLogs('gang');
             fetchOnlinePlayers();
             fetchAndDisplayEconomyStats();
+            fetchEvents();
+            fetchEventLogs();
             setInterval(fetchOnlinePlayers, 30000);
         };
         initialLoad();
