@@ -12,10 +12,10 @@ const PORT = process.env.PORT || 3000;
 const DONATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014006836199526/OE4J0sWbDSxcePTAH0qgE8JKa5BDTS5Zj0YpjNcTu55dcA5oI3j7WVUM7zzbasF-GHK5";
 const APPLICATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014141452386405/6zo3kwZ24-RakI_btJN8kiegGnuwkSvN5SPmBeQJ9j_Wv2IsE3mpZGLf4KgOY_h1Z2X3";
 const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
-const FACTION_LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf"; 
+const FACTION_LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
 const GANG_LOG_WEBHOOK_URL = "YOUR_GANG_LOG_WEBHOOK_URL_HERE";
 
-const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp"; 
+const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp";
 const DB_NAME = "nigeria-vibe-rp";
 let db;
 
@@ -61,7 +61,7 @@ function getFactionName(factionId) {
         case 2: return "Medic/Fire";
         case 4: return "Government";
         case 5: return "Mechanic";
-        case 16: return "EFCC";
+        case 11: return "EFCC";
         default: return "Civilian";
     }
 }
@@ -188,7 +188,7 @@ app.get('/api/online-players', async (req, res) => {
     }
     try {
         const [rows] = await sampDbPool.query("SELECT `username` FROM `users` WHERE `is_online` = 1");
-        res.json(rows); 
+        res.json(rows);
     } catch (error) {
         console.error("MySQL Get Online Players Error:", error);
         res.status(500).json({ message: "Failed to fetch online players." });
@@ -269,11 +269,16 @@ app.get('/api/economy-stats', async (req, res) => {
             sampDbPool.query("SELECT COUNT(*) as totalBusinesses FROM businesses"),
             sampDbPool.query("SELECT SUM(cash) as totalBusinessCash FROM businesses")
         ]);
+        
+        // ** THE FIX IS HERE **
+        // We convert the string values from the DB to numbers before adding them
+        const cashNum = parseInt(totalPlayerCash) || 0;
+        const bankNum = parseInt(totalPlayerBank) || 0;
 
         res.json({
-            totalCirculation: (totalPlayerCash + totalPlayerBank || 0),
-            totalPlayerCash: totalPlayerCash || 0,
-            totalPlayerBank: totalPlayerBank || 0,
+            totalCirculation: cashNum + bankNum,
+            totalPlayerCash: cashNum,
+            totalPlayerBank: bankNum,
             wealthDistribution,
             topVehicles,
             ownedBusinesses: ownedBusinesses || 0,
