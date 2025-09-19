@@ -3,15 +3,18 @@ const router = express.Router();
 
 // This function will be called in server.js to pass the database pool
 function factionRoutes(sampDbPool) {
+    // A map to easily get faction names. Add more as needed.
     const FACTION_NAMES = {
         1: "Police",
-        2: "Medic",
+        2: "Medic/Fire",
         4: "Government",
         5: "Mechanic",
         16: "EFCC"
     };
 
-    // Endpoint to get all data for a specific faction
+    /**
+     * Endpoint to get key stats and the member list for a specific faction.
+     */
     router.get('/faction-data/:factionId', async (req, res) => {
         const { factionId } = req.params;
         const id = parseInt(factionId);
@@ -20,12 +23,11 @@ function factionRoutes(sampDbPool) {
         if (!FACTION_NAMES[id]) return res.status(400).json({ message: "Invalid Faction ID." });
 
         try {
-            const queries = [
+            // Run queries in parallel for efficiency
+            const [treasuryResult, membersResult] = await Promise.all([
                 sampDbPool.query("SELECT faction_treasury FROM factions WHERE id = ?", [id]),
-                sampDbPool.query("SELECT name, factionrank FROM users WHERE faction = ? ORDER BY factionrank DESC", [id])
-            ];
-
-            const [treasuryResult, membersResult] = await Promise.all(queries);
+                sampDbPool.query("SELECT username, factionrank FROM users WHERE faction = ? ORDER BY factionrank DESC", [id])
+            ]);
 
             const treasury = treasuryResult[0][0] ? treasuryResult[0][0].faction_treasury : 0;
             const members = membersResult[0];
@@ -42,7 +44,10 @@ function factionRoutes(sampDbPool) {
         }
     });
 
-    // Endpoint for paginated, filtered faction logs
+    /**
+     * Endpoint for paginated, filtered faction logs.
+     * It finds all members of a faction and then searches the log for any entries mentioning them.
+     */
     router.get('/faction-logs/:factionId', async (req, res) => {
         const { factionId } = req.params;
         const id = parseInt(factionId);
@@ -52,24 +57,24 @@ function factionRoutes(sampDbPool) {
 
         if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
         
-        const factionName = FACTION_NAMES[id];
-        if (!factionName) return res.status(400).json({ message: 'Invalid Faction ID.' });
-
         try {
-             // We get all members of the faction to filter the logs by their names
+            // First, get all members of the specified faction
             const [members] = await sampDbPool.query("SELECT username FROM users WHERE faction = ?", [id]);
             const memberNames = members.map(m => m.username);
 
+            // If there are no members, there can be no logs
             if (memberNames.length === 0) {
                  return res.json({ logs: [], totalCount: 0, totalPages: 0, currentPage: 1 });
             }
 
-            // Dynamically create WHERE clauses for each member name
+            // Dynamically create 'LIKE' clauses for each member name
             const whereClauses = memberNames.map(() => '`description` LIKE ?').join(' OR ');
-            const queryParams = [...memberNames.map(name => `%${name}%`), limit, offset];
             
-            const [logs] = await sampDbPool.query(`SELECT date, description FROM \`log_faction\` WHERE ${whereClauses} ORDER BY date DESC LIMIT ? OFFSET ?`, queryParams);
+            // Fetch the paginated logs
+            const logQueryParams = [...memberNames.map(name => `%${name}%`), limit, offset];
+            const [logs] = await sampDbPool.query(`SELECT date, description FROM \`log_faction\` WHERE ${whereClauses} ORDER BY date DESC LIMIT ? OFFSET ?`, logQueryParams);
             
+            // Get the total count of matching logs for pagination
             const countQueryParams = memberNames.map(name => `%${name}%`);
             const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM \`log_faction\` WHERE ${whereClauses}`, countQueryParams);
             
@@ -84,3 +89,4 @@ function factionRoutes(sampDbPool) {
 }
 
 module.exports = factionRoutes;
+
