@@ -4,7 +4,7 @@ const path = require('path');
 const cors = require('cors');
 const { MongoClient, ObjectId } = require('mongodb');
 const mysql = require('mysql2/promise');
-const cron = require('node-cron'); // ADDED FOR SCHEDULING
+const cron = require('node-cron');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,7 +14,8 @@ const DONATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014006836
 const APPLICATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014141452386405/6zo3kwZ24-RakI_btJN8kiegGnuwkSvN5SPmBeQJ9j_Wv2IsE3mpZGLf4KgOY_h1Z2X3";
 const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
 const FACTION_LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
-const GANG_LOG_WEBHOOK_URL = "YOUR_GANG_LOG_WEBHOOK_URL_HERE";
+const GANG_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418402752211451944/XT6G-Q96LobSbmoubUJ3QBxux9E9F1f3oBklBQ28ztE06SYE4jXdvnLmvPMJKe6wfP1T";
+const EVENT_ANNOUNCEMENT_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418604487060226179/N1MoYe7h7wkwsIQjaQ9Nb6Vn4lYmTJ0a2QvJwh1CG3RyCGOVFOyBcPkiWWyhUCJ2YCvK"; // IMPORTANT: Add your Event Webhook URL
 
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp";
 const DB_NAME = "nigeria-vibe-rp";
@@ -184,9 +185,7 @@ app.get('/api/player/:name', async (req, res) => {
 });
 
 app.get('/api/online-players', async (req, res) => {
-    if (!sampDbPool) {
-        return res.status(503).json({ message: "Game database is not connected." });
-    }
+    if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     try {
         const [rows] = await sampDbPool.query("SELECT `username` FROM `users` WHERE `is_online` = 1");
         res.json(rows);
@@ -215,7 +214,6 @@ app.get('/api/logs/:type', async (req, res) => {
     }
 });
 
-// --- ECONOMY ENDPOINT (UPDATED FOR HISTORY & LEADERBOARDS) ---
 app.get('/api/economy-stats', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     try {
@@ -231,11 +229,10 @@ app.get('/api/economy-stats', async (req, res) => {
             sampDbPool.query("SELECT name, faction_treasury FROM factions ORDER BY faction_treasury DESC"),
             sampDbPool.query("SELECT total_circulation FROM economy_snapshots WHERE snapshot_date = CURDATE() - INTERVAL 1 DAY"),
             sampDbPool.query("SELECT total_circulation FROM economy_snapshots WHERE snapshot_date = CURDATE() - INTERVAL 7 DAY"),
-            sampDbPool.query("SELECT snapshot_date, total_circulation FROM economy_snapshots ORDER BY snapshot_date DESC LIMIT 30")
+            sampDbPool.query("SELECT snapshot_date, total_circulation FROM economy_snapshots ORDER BY snapshot_date DESC LIMIT 30"),
+            sampDbPool.query("SELECT gov_treasury FROM settings LIMIT 1") // NEW: Government Treasury
         ];
-
-        const results = await Promise.all(queries.map(p => p.catch(e => [[]]))); // Safer Promise handling
-
+        const results = await Promise.all(queries.map(p => p.catch(e => [[]])));
         const playerWealth = results[0][0][0] || { totalPlayerCash: 0, totalPlayerBank: 0 };
         const wealthDistribution = results[1][0] || [];
         const topVehicles = results[2][0] || [];
@@ -248,57 +245,174 @@ app.get('/api/economy-stats', async (req, res) => {
         const yesterdayData = results[9][0][0] || { total_circulation: 0 };
         const weekAgoData = results[10][0][0] || { total_circulation: 0 };
         const historyData = results[11][0] || [];
-        
+        const govData = results[12][0][0] || { gov_treasury: 0 }; // NEW
         const cashNum = parseInt(playerWealth.totalPlayerCash) || 0;
         const bankNum = parseInt(playerWealth.totalPlayerBank) || 0;
-
         res.json({
-            totalCirculation: cashNum + bankNum,
-            totalPlayerCash: cashNum,
-            totalPlayerBank: bankNum,
+            totalCirculation: cashNum + bankNum, totalPlayerCash: cashNum, totalPlayerBank: bankNum,
             wealthDistribution, topVehicles,
-            ownedBusinesses: ownedBusinessesCount.ownedBusinesses,
-            totalBusinesses: totalBusinessesCount.totalBusinesses,
+            ownedBusinesses: ownedBusinessesCount.ownedBusinesses, totalBusinesses: totalBusinessesCount.totalBusinesses,
             totalBusinessCash: totalBusinessCashSum.totalBusinessCash || 0,
             wealthiestPlayers, topBusinesses, factionTreasuries,
             yesterdayCirculation: parseInt(yesterdayData.total_circulation) || 0,
             weekAgoCirculation: parseInt(weekAgoData.total_circulation) || 0,
-            circulationHistory: historyData
+            circulationHistory: historyData,
+            governmentTreasury: parseInt(govData.gov_treasury) || 0 // NEW
         });
-
     } catch (error) {
         console.error("MySQL Get Economy Stats Error:", error);
         res.status(500).json({ message: "Failed to fetch economy statistics." });
     }
 });
 
+// --- NEW: EVENT MANAGER API ROUTES ---
+// GET all events for the calendar
+app.get('/api/events', async (req, res) => {
+    const events = await db.collection('events').find().sort({ event_time: 1 }).toArray();
+    res.json(events);
+});
+
+// POST a new event
+app.post('/api/events', async (req, res) => {
+    const newEvent = {
+        title: req.body.title,
+        description: req.body.description,
+        event_time: new Date(req.body.event_time),
+        announcement_time: req.body.announcement_time ? new Date(req.body.announcement_time) : null,
+        is_announced: false,
+        created_at: new Date()
+    };
+    await db.collection('events').insertOne(newEvent);
+    res.status(201).json({ message: 'Event created successfully!' });
+});
+
+// DELETE an event
+app.delete('/api/events/:id', async (req, res) => {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid ID format.' });
+    await db.collection('events').deleteOne({ _id: new ObjectId(id) });
+    res.json({ message: 'Event deleted successfully' });
+});
+
+// GET recent event logs
+app.get('/api/event-logs', async (req, res) => {
+    const logs = await db.collection('event_logs').find().sort({ log_date: -1 }).limit(15).toArray();
+    res.json(logs);
+});
+
+// POST a new event log
+app.post('/api/event-logs', async (req, res) => {
+    const newLog = {
+        summary: req.body.summary,
+        log_date: new Date()
+    };
+    await db.collection('event_logs').insertOne(newLog);
+    res.status(201).json({ message: 'Event log saved successfully!' });
+});
+
+// POST to pay a winner
+app.post('/api/pay-winner', async (req, res) => {
+    const { playerName, amount, reason, adminName } = req.body;
+    const paymentAmount = parseInt(amount);
+    if (!playerName || !paymentAmount || !reason || paymentAmount <= 0) {
+        return res.status(400).json({ message: 'Invalid data provided.' });
+    }
+    try {
+        const [playerRows] = await sampDbPool.query("SELECT `bank` FROM `users` WHERE `username` = ?", [playerName]);
+        if (playerRows.length === 0) {
+            return res.status(404).json({ message: 'Player not found.' });
+        }
+        await sampDbPool.query("UPDATE `users` SET `bank` = `bank` + ? WHERE `username` = ?", [paymentAmount, playerName]);
+        const logDescription = `Admin ${adminName || 'Unknown'} paid ${playerName} $${paymentAmount.toLocaleString()} for: ${reason}`;
+        await sampDbPool.query("INSERT INTO `log_admin` (date, description) VALUES (NOW(), ?)", [logDescription]);
+        res.json({ message: `Successfully paid ${playerName} $${paymentAmount.toLocaleString()}` });
+    } catch (error) {
+        console.error("Error in pay-winner:", error);
+        res.status(500).json({ message: "Failed to pay winner." });
+    }
+});
+
+// GET a random player for the raffle
+app.get('/api/raffle-winner', async (req, res) => {
+    try {
+        const [rows] = await sampDbPool.query("SELECT username FROM users ORDER BY RAND() LIMIT 1");
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'No players found in the database.' });
+        }
+        res.json(rows[0]);
+    } catch (error) {
+        console.error("Raffle winner error:", error);
+        res.status(500).json({ message: 'Failed to draw a winner.' });
+    }
+});
+
+// POST a quick announcement to Discord
+app.post('/api/quick-announce', async (req, res) => {
+    const { message, adminName } = req.body;
+    if (!message) {
+        return res.status(400).json({ message: 'Message cannot be empty.' });
+    }
+    const embed = {
+        title: "📢 Event Announcement",
+        description: message,
+        color: 0x5865F2, // Discord Blurple
+        footer: { text: `Posted by ${adminName || 'Event Manager'}` },
+        timestamp: new Date().toISOString()
+    };
+    await sendToDiscord(EVENT_ANNOUNCEMENT_WEBHOOK_URL, embed);
+    res.json({ message: 'Announcement sent to Discord!' });
+});
+
+
 // --- SERVER AND CRON JOB START ---
 Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
     app.listen(PORT, () => {
         console.log(`Server started on port ${PORT}`);
 
-        // --- SCHEDULED DAILY ECONOMY SNAPSHOT ---
+        // SCHEDULED JOB 1: DAILY ECONOMY SNAPSHOT (Runs at 23:59)
         console.log("Economy snapshot job scheduled for 23:59 daily.");
         cron.schedule('59 23 * * *', async () => {
             console.log(`[${new Date().toLocaleString()}] Running daily economy snapshot job...`);
             try {
                 if (!sampDbPool) { console.log('Database not connected, skipping snapshot.'); return; }
-                
                 const [[{ total }]] = await sampDbPool.query("SELECT SUM(cash + bank) as total FROM users");
                 const totalCirculation = parseInt(total) || 0;
-
-                await sampDbPool.query(
-                    "INSERT INTO economy_snapshots (snapshot_date, total_circulation) VALUES (CURDATE(), ?) ON DUPLICATE KEY UPDATE total_circulation = ?",
-                    [totalCirculation, totalCirculation]
-                );
+                await sampDbPool.query("INSERT INTO economy_snapshots (snapshot_date, total_circulation) VALUES (CURDATE(), ?) ON DUPLICATE KEY UPDATE total_circulation = ?", [totalCirculation, totalCirculation]);
                 console.log(`Successfully saved economy snapshot: $${totalCirculation.toLocaleString()}`);
+            } catch (err) { console.error("Error running economy snapshot job:", err); }
+        });
 
+        // SCHEDULED JOB 2: CHECK FOR EVENT ANNOUNCEMENTS (Runs every minute)
+        console.log("Scheduled event announcer job scheduled to run every minute.");
+        cron.schedule('* * * * *', async () => {
+            try {
+                const now = new Date();
+                const eventsToAnnounce = await db.collection('events').find({
+                    announcement_time: { $lte: now },
+                    is_announced: false
+                }).toArray();
+
+                for (const event of eventsToAnnounce) {
+                    console.log(`Announcing event: ${event.title}`);
+                    const embed = {
+                        title: `🎉 Upcoming Event: ${event.title}`,
+                        description: event.description,
+                        color: 0xFFD700, // Gold
+                        fields: [{
+                            name: "Event Time",
+                            value: `<t:${Math.floor(event.event_time.getTime() / 1000)}:F>`, // Discord timestamp format
+                            inline: true
+                        }],
+                        footer: { text: "Get ready!" }
+                    };
+                    await sendToDiscord(EVENT_ANNOUNCEMENT_WEBHOOK_URL, embed);
+                    await db.collection('events').updateOne({ _id: event._id }, { $set: { is_announced: true } });
+                }
             } catch (err) {
-                console.error("Error running economy snapshot job:", err);
+                console.error("Error in scheduled announcement job:", err);
             }
         });
     });
 }).catch(err => {
     console.error("Failed to initialize databases and start server.", err);
 });
-
