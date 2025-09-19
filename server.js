@@ -13,7 +13,7 @@ const DONATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014006836
 const APPLICATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014141452386405/6zo3kwZ24-RakI_btJN8kiegGnuwkSvN5SPmBeQJ9j_Wv2IsE3mpZGLf4KgOY_h1Z2X3";
 const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
 const FACTION_LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
-const GANG_LOG_WEBHOOK_URL = "YOUR_GANG_LOG_WEBHOOK_URL_HERE";
+const GANG_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418402752211451944/XT6G-Q96LobSbmoubUJ3QBxux9E9F1f3oBklBQ28ztE06SYE4jXdvnLmvPMJKe6wfP1T";
 
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp";
 const DB_NAME = "nigeria-vibe-rp";
@@ -61,7 +61,7 @@ function getFactionName(factionId) {
         case 2: return "Medic/Fire";
         case 4: return "Government";
         case 5: return "Mechanic";
-        case 11: return "EFCC";
+        case 16: return "EFCC";
         default: return "Civilian";
     }
 }
@@ -196,39 +196,18 @@ app.get('/api/online-players', async (req, res) => {
 });
 
 app.get('/api/logs/:type', async (req, res) => {
-    const validTypes = {
-        admin: 'log_admin',
-        faction: 'log_faction',
-        gang: 'log_gang'
-    };
+    const validTypes = { admin: 'log_admin', faction: 'log_faction', gang: 'log_gang' };
     const logType = req.params.type;
     const tableName = validTypes[logType];
-
-    if (!tableName) {
-        return res.status(400).json({ message: 'Invalid log type requested.' });
-    }
-
-    if (!sampDbPool) {
-        return res.status(503).json({ message: "Game database is not connected." });
-    }
-
+    if (!tableName) { return res.status(400).json({ message: 'Invalid log type requested.' }); }
+    if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     const page = parseInt(req.query.page) || 1;
     const limit = 50;
     const offset = (page - 1) * limit;
-
     try {
-        const [logs] = await sampDbPool.query(
-            `SELECT date, description FROM \`${tableName}\` ORDER BY date DESC LIMIT ? OFFSET ?`,
-            [limit, offset]
-        );
+        const [logs] = await sampDbPool.query(`SELECT date, description FROM \`${tableName}\` ORDER BY date DESC LIMIT ? OFFSET ?`, [limit, offset]);
         const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM \`${tableName}\``);
-        
-        res.json({
-            logs,
-            totalCount: count,
-            totalPages: Math.ceil(count / limit),
-            currentPage: page
-        });
+        res.json({ logs, totalCount: count, totalPages: Math.ceil(count / limit), currentPage: page });
     } catch (error) {
         console.error(`MySQL Get ${logType} Logs Error:`, error);
         res.status(500).json({ message: `Failed to fetch ${logType} logs.` });
@@ -237,10 +216,7 @@ app.get('/api/logs/:type', async (req, res) => {
 
 // --- ECONOMY ENDPOINT ---
 app.get('/api/economy-stats', async (req, res) => {
-    if (!sampDbPool) {
-        return res.status(503).json({ message: "Game database is not connected." });
-    }
-
+    if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     try {
         const [
             [[{ totalPlayerCash, totalPlayerBank }]],
@@ -248,30 +224,24 @@ app.get('/api/economy-stats', async (req, res) => {
             [topVehicles],
             [[{ ownedBusinesses }]],
             [[{ totalBusinesses }]],
-            [[{ totalBusinessCash }]]
+            [[{ totalBusinessCash }]],
+            // NEW QUERIES FOR LEADERBOARDS
+            [wealthiestPlayers],
+            [topBusinesses],
+            [factionTreasuries]
         ] = await Promise.all([
             sampDbPool.query("SELECT SUM(cash) AS totalPlayerCash, SUM(bank) AS totalPlayerBank FROM users"),
-            sampDbPool.query(`
-                SELECT
-                    CASE
-                        WHEN (cash + bank) BETWEEN 0 AND 25000 THEN 'Newcomer ($0 - $25k)'
-                        WHEN (cash + bank) BETWEEN 25001 AND 150000 THEN 'Working Class ($25k - $150k)'
-                        WHEN (cash + bank) BETWEEN 150001 AND 750000 THEN 'Middle Class ($150k - $750k)'
-                        ELSE 'Wealthy ($750k+)'
-                    END AS wealthBracket,
-                    COUNT(*) AS playerCount
-                FROM users
-                GROUP BY wealthBracket
-                ORDER BY MIN(cash + bank)
-            `),
+            sampDbPool.query(`SELECT CASE WHEN (cash + bank) BETWEEN 0 AND 25000 THEN 'Newcomer ($0 - $25k)' WHEN (cash + bank) BETWEEN 25001 AND 150000 THEN 'Working Class ($25k - $150k)' WHEN (cash + bank) BETWEEN 150001 AND 750000 THEN 'Middle Class ($150k - $750k)' ELSE 'Wealthy ($750k+)' END AS wealthBracket, COUNT(*) AS playerCount FROM users GROUP BY wealthBracket ORDER BY MIN(cash + bank)`),
             sampDbPool.query("SELECT modelid, COUNT(*) AS vehicleCount FROM vehicles GROUP BY modelid ORDER BY vehicleCount DESC LIMIT 10"),
             sampDbPool.query("SELECT COUNT(*) as ownedBusinesses FROM businesses WHERE ownerid != 0"),
             sampDbPool.query("SELECT COUNT(*) as totalBusinesses FROM businesses"),
-            sampDbPool.query("SELECT SUM(cash) as totalBusinessCash FROM businesses")
+            sampDbPool.query("SELECT SUM(cash) as totalBusinessCash FROM businesses"),
+            // NEW QUERIES ADDED HERE
+            sampDbPool.query("SELECT username, (cash + bank) as total_wealth FROM users ORDER BY total_wealth DESC LIMIT 10"),
+            sampDbPool.query("SELECT name, cash FROM businesses WHERE ownerid != 0 ORDER BY cash DESC LIMIT 10"),
+            sampDbPool.query("SELECT faction_name, faction_treasury FROM factions ORDER BY faction_treasury DESC")
         ]);
         
-        // ** THE FIX IS HERE **
-        // We convert the string values from the DB to numbers before adding them
         const cashNum = parseInt(totalPlayerCash) || 0;
         const bankNum = parseInt(totalPlayerBank) || 0;
 
@@ -283,7 +253,11 @@ app.get('/api/economy-stats', async (req, res) => {
             topVehicles,
             ownedBusinesses: ownedBusinesses || 0,
             totalBusinesses: totalBusinesses || 0,
-            totalBusinessCash: totalBusinessCash || 0
+            totalBusinessCash: totalBusinessCash || 0,
+            // NEW DATA ADDED TO RESPONSE
+            wealthiestPlayers,
+            topBusinesses,
+            factionTreasuries
         });
 
     } catch (error) {
