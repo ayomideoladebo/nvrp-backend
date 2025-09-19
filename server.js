@@ -5,6 +5,7 @@ const cors = require('cors');
 const { MongoClient, ObjectId } = require('mongodb');
 const mysql = require('mysql2/promise');
 const cron = require('node-cron');
+const factionRoutes = require('./faction-routes.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -380,6 +381,7 @@ app.get('/api/random-player', async (req, res) => {
 
 // --- SERVER AND CRON JOB START ---
 Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
+    app.use('/api', factionRoutes(sampDbPool));
     app.listen(PORT, () => {
         console.log(`Server started on port ${PORT}`);
 
