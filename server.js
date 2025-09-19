@@ -12,8 +12,8 @@ const PORT = process.env.PORT || 3000;
 const DONATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014006836199526/OE4J0sWbDSxcePTAH0qgE8JKa5BDTS5Zj0YpjNcTu55dcA5oI3j7WVUM7zzbasF-GHK5";
 const APPLICATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014141452386405/6zo3kwZ24-RakI_btJN8kiegGnuwkSvN5SPmBeQJ9j_Wv2IsE3mpZGLf4KgOY_h1Z2X3";
 const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
-const FACTION_LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
-const GANG_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418402752211451944/XT6G-Q96LobSbmoubUJ3QBxux9E9F1f3oBklBQ28ztE06SYE4jXdvnLmvPMJKe6wfP1T";
+const FACTION_LOG_WEBHOOK_URL = "YOUR_FACTION_LOG_WEBHOOK_URL_HERE";
+const GANG_LOG_WEBHOOK_URL = "YOUR_GANG_LOG_WEBHOOK_URL_HERE";
 
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp";
 const DB_NAME = "nigeria-vibe-rp";
@@ -61,7 +61,7 @@ function getFactionName(factionId) {
         case 2: return "Medic/Fire";
         case 4: return "Government";
         case 5: return "Mechanic";
-        case 16: return "EFCC";
+        case 11: return "EFCC";
         default: return "Civilian";
     }
 }
@@ -214,36 +214,38 @@ app.get('/api/logs/:type', async (req, res) => {
     }
 });
 
-// --- ECONOMY ENDPOINT ---
+// --- ECONOMY ENDPOINT (REVISED AND MORE ROBUST) ---
 app.get('/api/economy-stats', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     try {
-        const [
-            [[{ totalPlayerCash, totalPlayerBank }]],
-            [wealthDistribution],
-            [topVehicles],
-            [[{ ownedBusinesses }]],
-            [[{ totalBusinesses }]],
-            [[{ totalBusinessCash }]],
-            // NEW QUERIES FOR LEADERBOARDS
-            [wealthiestPlayers],
-            [topBusinesses],
-            [factionTreasuries]
-        ] = await Promise.all([
+        const queries = [
             sampDbPool.query("SELECT SUM(cash) AS totalPlayerCash, SUM(bank) AS totalPlayerBank FROM users"),
             sampDbPool.query(`SELECT CASE WHEN (cash + bank) BETWEEN 0 AND 25000 THEN 'Newcomer ($0 - $25k)' WHEN (cash + bank) BETWEEN 25001 AND 150000 THEN 'Working Class ($25k - $150k)' WHEN (cash + bank) BETWEEN 150001 AND 750000 THEN 'Middle Class ($150k - $750k)' ELSE 'Wealthy ($750k+)' END AS wealthBracket, COUNT(*) AS playerCount FROM users GROUP BY wealthBracket ORDER BY MIN(cash + bank)`),
             sampDbPool.query("SELECT modelid, COUNT(*) AS vehicleCount FROM vehicles GROUP BY modelid ORDER BY vehicleCount DESC LIMIT 10"),
             sampDbPool.query("SELECT COUNT(*) as ownedBusinesses FROM businesses WHERE ownerid != 0"),
             sampDbPool.query("SELECT COUNT(*) as totalBusinesses FROM businesses"),
             sampDbPool.query("SELECT SUM(cash) as totalBusinessCash FROM businesses"),
-            // NEW QUERIES ADDED HERE
             sampDbPool.query("SELECT username, (cash + bank) as total_wealth FROM users ORDER BY total_wealth DESC LIMIT 10"),
             sampDbPool.query("SELECT name, cash FROM businesses WHERE ownerid != 0 ORDER BY cash DESC LIMIT 10"),
             sampDbPool.query("SELECT faction_name, faction_treasury FROM factions ORDER BY faction_treasury DESC")
-        ]);
+        ];
+
+        const results = await Promise.all(queries);
+
+        // --- ROBUST DATA HANDLING ---
+        // This new way of getting data is safer and won't crash if a query returns nothing.
+        const playerWealth = results[0][0][0] || { totalPlayerCash: 0, totalPlayerBank: 0 };
+        const wealthDistribution = results[1][0] || [];
+        const topVehicles = results[2][0] || [];
+        const ownedBusinessesCount = results[3][0][0] || { ownedBusinesses: 0 };
+        const totalBusinessesCount = results[4][0][0] || { totalBusinesses: 0 };
+        const totalBusinessCashSum = results[5][0][0] || { totalBusinessCash: 0 };
+        const wealthiestPlayers = results[6][0] || [];
+        const topBusinesses = results[7][0] || [];
+        const factionTreasuries = results[8][0] || [];
         
-        const cashNum = parseInt(totalPlayerCash) || 0;
-        const bankNum = parseInt(totalPlayerBank) || 0;
+        const cashNum = parseInt(playerWealth.totalPlayerCash) || 0;
+        const bankNum = parseInt(playerWealth.totalPlayerBank) || 0;
 
         res.json({
             totalCirculation: cashNum + bankNum,
@@ -251,10 +253,9 @@ app.get('/api/economy-stats', async (req, res) => {
             totalPlayerBank: bankNum,
             wealthDistribution,
             topVehicles,
-            ownedBusinesses: ownedBusinesses || 0,
-            totalBusinesses: totalBusinesses || 0,
-            totalBusinessCash: totalBusinessCash || 0,
-            // NEW DATA ADDED TO RESPONSE
+            ownedBusinesses: ownedBusinessesCount.ownedBusinesses,
+            totalBusinesses: totalBusinessesCount.totalBusinesses,
+            totalBusinessCash: totalBusinessCashSum.totalBusinessCash || 0,
             wealthiestPlayers,
             topBusinesses,
             factionTreasuries
@@ -265,7 +266,6 @@ app.get('/api/economy-stats', async (req, res) => {
         res.status(500).json({ message: "Failed to fetch economy statistics." });
     }
 });
-
 
 // --- START SERVER ---
 Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
