@@ -16,6 +16,7 @@ const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918
 const FACTION_LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
 const GANG_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418402752211451944/XT6G-Q96LobSbmoubUJ3QBxux9E9F1f3oBklBQ28ztE06SYE4jXdvnLmvPMJKe6wfP1T";
 const EVENTS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418604487060226179/N1MoYe7h7wkwsIQjaQ9Nb6Vn4lYmTJ0a2QvJwh1CG3RyCGOVFOyBcPkiWWyhUCJ2YCvK";
+ // <<<--- ADD THIS LINE AND YOUR WEBHOOK URL
 
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp";
 const DB_NAME = "nigeria-vibe-rp";
@@ -347,6 +348,25 @@ app.post('/api/event-log', async (req, res) => {
     }
 });
 
+app.post('/api/quick-announcement', async (req, res) => {
+    const { embed } = req.body;
+    sendToDiscord(EVENTS_WEBHOOK_URL, embed);
+    res.status(200).json({ message: 'Announcement sent!' });
+});
+
+app.get('/api/all-players', async (req, res) => {
+    if (!sampDbPool) {
+        return res.status(503).json({ message: "Game database is not connected." });
+    }
+    try {
+        const [rows] = await sampDbPool.query("SELECT `username` FROM `users`");
+        res.json(rows.map(r => r.username));
+    } catch (error) {
+        console.error("MySQL Get All Players Error:", error);
+        res.status(500).json({ message: "Failed to fetch all players." });
+    }
+});
+
 app.get('/api/random-player', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
@@ -388,18 +408,16 @@ Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
         console.log("Discord announcement job scheduled to run every minute.");
         cron.schedule('* * * * *', async () => {
             if (!sampDbPool) { return; }
-            const [events] = await sampDbPool.query("SELECT * FROM `events` WHERE `sent` = 0");
+            const [events] = await sampDbPool.query("SELECT * FROM `events` WHERE `sent` = 0 AND `announcement_date` IS NOT NULL AND `announcement_date` <= NOW()");
             for (const event of events) {
-                if (new Date(event.announcement_date) <= new Date()) {
-                    const eventEmbed = {
-                        title: `Upcoming Event: ${event.title}`,
-                        description: event.description,
-                        color: 0x00FF00,
-                        footer: { text: `Event Date: ${new Date(event.event_date).toLocaleString()}` }
-                    };
-                    sendToDiscord(EVENTS_WEBHOOK_URL, eventEmbed);
-                    await sampDbPool.query("UPDATE `events` SET `sent` = 1 WHERE `id` = ?", [event.id]);
-                }
+                const eventEmbed = {
+                    title: `Upcoming Event: ${event.title}`,
+                    description: event.description,
+                    color: 0x00FF00,
+                    footer: { text: `Event Date: ${new Date(event.event_date).toLocaleString()}` }
+                };
+                sendToDiscord(EVENTS_WEBHOOK_URL, eventEmbed);
+                await sampDbPool.query("UPDATE `events` SET `sent` = 1 WHERE `id` = ?", [event.id]);
             }
         });
 
