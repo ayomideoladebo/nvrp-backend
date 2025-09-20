@@ -67,7 +67,6 @@ function getFactionName(factionId) {
     switch (factionId) {
         case 1: return "Police";
         case 2: return "Medic/Fire";
-        case 3: return "News";
         case 4: return "Government";
         case 5: return "Mechanic";
         case 16: return "EFCC";
@@ -85,7 +84,7 @@ async function sendToDiscord(webhookUrl, embed) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                username: "NVRP ALERTER BOT",
+                username: "NV:RP Alerter",
                 avatar_url: "https://i.imgur.com/4M34hi2.png",
                 embeds: [embed]
             })
@@ -222,13 +221,14 @@ app.get('/api/all-players', async (req, res) => {
 app.get('/api/all-players-list', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
-        const [rows] = await sampDbPool.query("SELECT `username`, `level`, `hours`, `faction` FROM `users` ORDER BY `username` ASC");
+        const [rows] = await sampDbPool.query("SELECT `username`, `level`, `hours`, `faction`, `ip` FROM `users` ORDER BY `username` ASC");
         res.json(rows);
     } catch (error) {
         console.error("MySQL Get All Players List Error:", error);
         res.status(500).json({ message: "Failed to fetch all players." });
     }
 });
+
 
 app.post('/api/player/:name/add-money', async (req, res) => {
     const playerName = req.params.name;
