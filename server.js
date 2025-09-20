@@ -5,7 +5,7 @@ const cors = require('cors');
 const { MongoClient, ObjectId } = require('mongodb');
 const mysql = require('mysql2/promise');
 const cron = require('node-cron');
-const factionRoutes = require('./faction-routes'); // Import the new faction routes module
+const factionRoutes = require('./faction-routes'); // Import the faction routes module
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -84,7 +84,7 @@ async function sendToDiscord(webhookUrl, embed) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                username: "NV:RP Alerter",
+                username: "NVRP ALERTER",
                 avatar_url: "https://i.imgur.com/4M34hi2.png",
                 embeds: [embed]
             })
@@ -101,6 +101,7 @@ async function sendToDiscord(webhookUrl, embed) {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public'))); // Serve static files like HTML
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const storage = multer.diskStorage({
     destination: './uploads/',
@@ -110,6 +111,8 @@ const upload = multer({ storage: storage }).single('screenshot');
 
 
 // --- API ROUTES ---
+
+// Authentication
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
@@ -119,6 +122,7 @@ app.post('/api/login', (req, res) => {
     }
 });
 
+// Donations
 app.post('/api/donations', (req, res) => {
     upload(req, res, async (err) => {
         if (err) return res.status(400).json({ message: err });
@@ -145,6 +149,7 @@ app.put('/api/donations/:id/status', async (req, res) => {
     res.json({ message: 'Status updated successfully' });
 });
 
+// Waitlist / Applications
 app.post('/api/waitlist', async (req, res) => {
     const { discordUser, inGameName, age } = req.body;
     const newApplication = { date: new Date(), ...req.body };
@@ -159,6 +164,7 @@ app.get('/api/waitlist', async (req, res) => {
     res.json(waitlist);
 });
 
+// Dashboard Stats
 app.get('/api/dashboard-stats', async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -169,6 +175,7 @@ app.get('/api/dashboard-stats', async (req, res) => {
     res.json({ totalPlayers, playersToday, totalDonations, pendingDonations });
 });
 
+// Player Data & Management
 app.get('/api/player/:name', async (req, res) => {
     const playerName = req.params.name;
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
@@ -191,10 +198,63 @@ app.get('/api/player/:name', async (req, res) => {
     }
 });
 
-app.get('/api/online-players', async (req, res) => {
-    if (!sampDbPool) {
-        return res.status(503).json({ message: "Game database is not connected." });
+app.post('/api/player/:name/adjust-money', async (req, res) => {
+    const { name } = req.params;
+    const { amount, reason } = req.body;
+    const adminName = "Admin"; // This would ideally come from a logged-in user's session
+
+    if (!sampDbPool) return res.status(503).json({ message: "Game database not connected." });
+    if (isNaN(parseInt(amount)) || !reason) return res.status(400).json({ message: "Invalid amount or reason provided."});
+
+    try {
+        const [result] = await sampDbPool.query("UPDATE users SET bank = bank + ? WHERE username = ?", [amount, name]);
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Player not found." });
+        }
+        
+        const action = amount > 0 ? 'Added' : 'Deducted';
+        const logMessage = `${adminName} ${action} ₦${Math.abs(amount).toLocaleString()} to/from ${name}'s bank account. Reason: ${reason}`;
+        await sampDbPool.query("INSERT INTO `log_admin` (`date`, `description`) VALUES (NOW(), ?)", [logMessage]);
+
+        res.json({ message: `Successfully ${action.toLowerCase()} money.`});
+    } catch (error) {
+        console.error("MySQL Adjust Money Error:", error);
+        res.status(500).json({ message: "Failed to adjust player money." });
     }
+});
+
+app.post('/api/player/:name/ban', async (req, res) => {
+    const { name } = req.params;
+    const { reason } = req.body;
+    const adminName = "Admin";
+
+    if (!sampDbPool) return res.status(503).json({ message: "Game database not connected." });
+    if (!reason) return res.status(400).json({ message: "A reason is required to ban a player." });
+
+    try {
+        const [[player]] = await sampDbPool.query("SELECT ip FROM users WHERE username = ?", [name]);
+        if (!player) {
+            return res.status(404).json({ message: "Player not found." });
+        }
+
+        // Add to bans table
+        await sampDbPool.query("INSERT INTO bans (username, ip, reason) VALUES (?, ?, ?)", [name, player.last_ip || 'IP_Not_Found', reason]);
+        
+        // Log the administrative action
+        const logMessage = `${adminName} banned player ${name}. Reason: ${reason}`;
+        await sampDbPool.query("INSERT INTO `log_admin` (`date`, `description`) VALUES (NOW(), ?)", [logMessage]);
+
+        res.json({ message: "Player has been banned successfully." });
+    } catch (error) {
+        console.error("MySQL Ban Player Error:", error);
+        res.status(500).json({ message: "Failed to ban player." });
+    }
+});
+
+
+app.get('/api/online-players', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
         const [rows] = await sampDbPool.query("SELECT `username` FROM `users` WHERE `is_online` = 1");
         res.json(rows);
@@ -204,10 +264,33 @@ app.get('/api/online-players', async (req, res) => {
     }
 });
 
-app.get('/api/all-players', async (req, res) => {
-    if (!sampDbPool) {
-        return res.status(503).json({ message: "Game database is not connected." });
+app.get('/api/all-players-list', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database not connected." });
+    const page = parseInt(req.query.page) || 1;
+    const limit = 100;
+    const offset = (page - 1) * limit;
+
+    try {
+        const [players] = await sampDbPool.query("SELECT username, level, hours, faction, crimes FROM users ORDER BY level DESC, hours DESC LIMIT ? OFFSET ?", [limit, offset]);
+        const [[{ count }]] = await sampDbPool.query("SELECT COUNT(*) as count FROM users");
+        
+        const playersWithFaction = players.map(p => ({...p, factionName: getFactionName(p.faction) }));
+        
+        res.json({
+            players: playersWithFaction,
+            totalCount: count,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page
+        });
+    } catch (error) {
+        console.error("MySQL Get All Players List Error:", error);
+        res.status(500).json({ message: "Failed to fetch player list." });
     }
+});
+
+
+app.get('/api/all-players', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
         const [rows] = await sampDbPool.query("SELECT `username` FROM `users`");
         res.json(rows.map(r => r.username));
@@ -217,6 +300,7 @@ app.get('/api/all-players', async (req, res) => {
     }
 });
 
+// Logs
 app.get('/api/logs/:type', async (req, res) => {
     const validTypes = { admin: 'log_admin', faction: 'log_faction', gang: 'log_gang' };
     const logType = req.params.type;
@@ -236,65 +320,59 @@ app.get('/api/logs/:type', async (req, res) => {
     }
 });
 
+// Economy
 app.get('/api/economy-stats', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     try {
         const queries = [
             sampDbPool.query("SELECT SUM(cash) AS totalPlayerCash, SUM(bank) AS totalPlayerBank FROM users"),
-            sampDbPool.query(`SELECT CASE WHEN (cash + bank) BETWEEN 0 AND 25000 THEN 'Newcomer (₦0 - ₦25k)' WHEN (cash + bank) BETWEEN 25001 AND 150000 THEN 'Working Class (₦25k - ₦150k)' WHEN (cash + bank) BETWEEN 150001 AND 750000 THEN 'Middle Class (₦150k - ₦750k)' ELSE 'Wealthy (₦750k+)' END AS wealthBracket, COUNT(*) AS playerCount FROM users GROUP BY wealthBracket ORDER BY MIN(cash + bank)`),
-            sampDbPool.query("SELECT modelid, COUNT(*) AS vehicleCount FROM vehicles GROUP BY modelid ORDER BY vehicleCount DESC LIMIT 10"),
-            sampDbPool.query("SELECT COUNT(*) as ownedBusinesses FROM businesses WHERE ownerid != 0"),
-            sampDbPool.query("SELECT COUNT(*) as totalBusinesses FROM businesses"),
+            sampDbPool.query("SELECT SUM(price) AS totalVehicleValue FROM vehicles WHERE ownerid != 0"),
+            sampDbPool.query("SELECT SUM(price) AS totalHouseValue FROM houses WHERE ownerid != -1"),
             sampDbPool.query("SELECT SUM(cash) as totalBusinessCash FROM businesses"),
-            sampDbPool.query("SELECT username, (cash + bank) as total_wealth FROM users ORDER BY total_wealth DESC LIMIT 10"),
-            sampDbPool.query("SELECT biz_desc, cash FROM businesses WHERE ownerid != 0 ORDER BY cash DESC LIMIT 10"),
-            sampDbPool.query("SELECT name, faction_treasury FROM factions ORDER BY faction_treasury DESC"),
-            sampDbPool.query("SELECT total_circulation FROM economy_snapshots WHERE snapshot_date = CURDATE() - INTERVAL 1 DAY"),
-            sampDbPool.query("SELECT total_circulation FROM economy_snapshots WHERE snapshot_date = CURDATE() - INTERVAL 7 DAY"),
-            sampDbPool.query("SELECT snapshot_date, total_circulation FROM economy_snapshots ORDER BY snapshot_date DESC LIMIT 30"),
-            sampDbPool.query("SELECT gov_treasury FROM settings")
+            sampDbPool.query("SELECT total_asset_value, total_circulation FROM economy_snapshots ORDER BY snapshot_date DESC LIMIT 1"),
         ];
 
-        const results = await Promise.all(queries.map(p => p.catch(e => [[]])));
+        const [
+            [[playerWealth]], 
+            [[vehicleAssets]], 
+            [[houseAssets]], 
+            [[businessAssets]],
+            [lastSnapshot]
+        ] = await Promise.all(queries.map(p => p.catch(e => [[{}]]) )); // Safer promise handling
 
-        const playerWealth = results[0][0][0] || { totalPlayerCash: 0, totalPlayerBank: 0 };
-        const wealthDistribution = results[1][0] || [];
-        const topVehicles = results[2][0] || [];
-        const ownedBusinessesCount = results[3][0][0] || { ownedBusinesses: 0 };
-        const totalBusinessesCount = results[4][0][0] || { totalBusinesses: 0 };
-        const totalBusinessCashSum = results[5][0][0] || { totalBusinessCash: 0 };
-        const wealthiestPlayers = results[6][0] || [];
-        const topBusinesses = results[7][0] || [];
-        const factionTreasuries = results[8][0] || [];
-        const yesterdayData = results[9][0][0] || { total_circulation: 0 };
-        const weekAgoData = results[10][0][0] || { total_circulation: 0 };
-        const historyData = results[11][0] || [];
-        const governmentTreasury = results[12][0][0] || { gov_treasury: 0 };
-        
-        const cashNum = parseInt(playerWealth.totalPlayerCash) || 0;
-        const bankNum = parseInt(playerWealth.totalPlayerBank) || 0;
+        const totalPlayerCash = parseInt(playerWealth.totalPlayerCash) || 0;
+        const totalPlayerBank = parseInt(playerWealth.totalPlayerBank) || 0;
+        const totalVehicleValue = parseInt(vehicleAssets.totalVehicleValue) || 0;
+        const totalHouseValue = parseInt(houseAssets.totalHouseValue) || 0;
+        const totalBusinessCash = parseInt(businessAssets.totalBusinessCash) || 0;
+
+        const totalServerAssetValue = totalPlayerCash + totalPlayerBank + totalVehicleValue + totalHouseValue + totalBusinessCash;
+
+        const previousAssetValue = lastSnapshot ? parseInt(lastSnapshot.total_asset_value) : 0;
+        const gsp = previousAssetValue > 0 ? totalServerAssetValue - previousAssetValue : 0;
 
         res.json({
-            totalCirculation: cashNum + bankNum,
-            totalPlayerCash: cashNum,
-            totalPlayerBank: bankNum,
-            wealthDistribution, topVehicles,
-            ownedBusinesses: ownedBusinessesCount.ownedBusinesses,
-            totalBusinesses: totalBusinessesCount.totalBusinesses,
-            totalBusinessCash: totalBusinessCashSum.totalBusinessCash || 0,
-            wealthiestPlayers, topBusinesses, factionTreasuries,
-            yesterdayCirculation: parseInt(yesterdayData.total_circulation) || 0,
-            weekAgoCirculation: parseInt(weekAgoData.total_circulation) || 0,
-            circulationHistory: historyData,
-            governmentTreasury: governmentTreasury.gov_treasury
+            totalServerAssetValue,
+            gsp,
+            assetDistribution: {
+                playerCash: totalPlayerCash,
+                playerBank: totalPlayerBank,
+                vehicles: totalVehicleValue,
+                houses: totalHouseValue,
+                businesses: totalBusinessCash
+            },
+            totalCirculation: totalPlayerCash + totalPlayerBank,
+            previousCirculation: lastSnapshot ? parseInt(lastSnapshot.total_circulation) : 0
         });
 
     } catch (error) {
-        console.error("MySQL Get Economy Stats Error:", error);
+        console.error("MySQL Get Advanced Economy Stats Error:", error);
         res.status(500).json({ message: "Failed to fetch economy statistics." });
     }
 });
 
+
+// Events
 app.get('/api/events', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     try {
@@ -336,7 +414,7 @@ app.post('/api/pay-winner', async (req, res) => {
     try {
         const [updateResult] = await sampDbPool.query("UPDATE `users` SET `bank` = `bank` + ? WHERE `username` = ?", [amount, playerName]);
         if(updateResult.affectedRows > 0){
-            await sampDbPool.query("INSERT INTO `log_admin` (`date`, `description`) VALUES (NOW(), ?)", [`[EVENT] Paid ${playerName} $${parseInt(amount).toLocaleString()} for: ${reason}`]);
+            await sampDbPool.query("INSERT INTO `log_admin` (`date`, `description`) VALUES (NOW(), ?)", [`[EVENT] Paid ${playerName} ₦${parseInt(amount).toLocaleString()} for: ${reason}`]);
              res.json({ message: 'Payment successful!' });
         } else {
              res.status(404).json({ message: "Player not found." });
@@ -400,25 +478,46 @@ Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
     app.listen(PORT, () => {
         console.log(`Server started on port ${PORT}`);
 
-        console.log("Economy snapshot job scheduled for 23:59 daily.");
+        // --- UPDATED SCHEDULED DAILY ECONOMY SNAPSHOT ---
         cron.schedule('59 23 * * *', async () => {
-            console.log(`[${new Date().toLocaleString()}] Running daily economy snapshot job...`);
+            console.log(`[${new Date().toLocaleString()}] Running daily economy and asset snapshot job...`);
             try {
-                if (!sampDbPool) { console.log('Database not connected, skipping snapshot.'); return; }
-                const [[{ total }]] = await sampDbPool.query("SELECT SUM(cash + bank) as total FROM users");
-                const totalCirculation = parseInt(total) || 0;
+                if (!sampDbPool) { console.log('DB not connected, skipping snapshot.'); return; }
+                
+                const queries = [
+                    sampDbPool.query("SELECT SUM(cash) + SUM(bank) as totalCirculation FROM users"),
+                    sampDbPool.query("SELECT SUM(price) AS totalVehicleValue FROM vehicles WHERE ownerid != 0"),
+                    sampDbPool.query("SELECT SUM(price) AS totalHouseValue FROM houses WHERE ownerid != -1"),
+                    sampDbPool.query("SELECT SUM(cash) as totalBusinessCash FROM businesses"),
+                ];
+
+                const [
+                    [[circulation]], 
+                    [[vehicleAssets]], 
+                    [[houseAssets]], 
+                    [[businessAssets]]
+                ] = await Promise.all(queries);
+                
+                const totalAssetValue = 
+                    (parseInt(circulation.totalCirculation) || 0) + 
+                    (parseInt(vehicleAssets.totalVehicleValue) || 0) +
+                    (parseInt(houseAssets.totalHouseValue) || 0) +
+                    (parseInt(businessAssets.totalBusinessCash) || 0);
+
+                const totalCirculation = parseInt(circulation.totalCirculation) || 0;
 
                 await sampDbPool.query(
-                    "INSERT INTO economy_snapshots (snapshot_date, total_circulation) VALUES (CURDATE(), ?) ON DUPLICATE KEY UPDATE total_circulation = ?",
-                    [totalCirculation, totalCirculation]
+                    "INSERT INTO economy_snapshots (snapshot_date, total_circulation, total_asset_value) VALUES (CURDATE(), ?, ?) ON DUPLICATE KEY UPDATE total_circulation = VALUES(total_circulation), total_asset_value = VALUES(total_asset_value)",
+                    [totalCirculation, totalAssetValue]
                 );
-                console.log(`Successfully saved economy snapshot: $${totalCirculation.toLocaleString()}`);
+                console.log(`Successfully saved economy snapshot. Total Assets: ₦${totalAssetValue.toLocaleString()}`);
 
             } catch (err) {
                 console.error("Error running economy snapshot job:", err);
             }
         });
         
+        // --- SCHEDULED DISCORD ANNOUNCEMENTS ---
         console.log("Discord announcement job scheduled to run every minute.");
         cron.schedule('* * * * *', async () => {
             try {
@@ -446,3 +545,4 @@ Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
 }).catch(err => {
     console.error("Failed to initialize databases and start server.", err);
 });
+
