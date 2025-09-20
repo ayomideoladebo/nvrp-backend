@@ -381,7 +381,7 @@ app.post('/api/gemini-analysis', async (req, res) => {
     const { circulationHistory, serverAssetValue } = req.body;
 
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-preview-0514" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
 
     const prompt = `
         You are an expert financial analyst for a virtual game server gta SAMP to be precised. Your analysis is not a simulation; it is a real-time prediction based on live data.
