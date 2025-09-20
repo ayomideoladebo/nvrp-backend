@@ -229,6 +229,17 @@ app.get('/api/all-players-list', async (req, res) => {
     }
 });
 
+app.get('/api/duplicate-ips', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+    try {
+        const [rows] = await sampDbPool.query("SELECT `ip`, COUNT(*) as `count` FROM `users` GROUP BY `ip` HAVING `count` > 1");
+        res.json(rows.map(r => r.ip));
+    } catch (error) {
+        console.error("MySQL Get Duplicate IPs Error:", error);
+        res.status(500).json({ message: "Failed to fetch duplicate IPs." });
+    }
+});
+
 
 app.post('/api/player/:name/add-money', async (req, res) => {
     const playerName = req.params.name;
