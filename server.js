@@ -217,6 +217,58 @@ app.get('/api/all-players', async (req, res) => {
     }
 });
 
+// New endpoint for player list
+app.get('/api/all-players-list', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+    try {
+        const [rows] = await sampDbPool.query("SELECT `username`, `level`, `hours`, `faction` FROM `users` ORDER BY `username` ASC");
+        res.json(rows);
+    } catch (error) {
+        console.error("MySQL Get All Players List Error:", error);
+        res.status(500).json({ message: "Failed to fetch all players." });
+    }
+});
+
+app.post('/api/player/:name/add-money', async (req, res) => {
+    const playerName = req.params.name;
+    const { amount } = req.body;
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+    try {
+        await sampDbPool.query("UPDATE `users` SET `bank` = `bank` + ? WHERE `username` = ?", [amount, playerName]);
+        res.json({ message: 'Money added successfully!' });
+    } catch (error) {
+        console.error("MySQL Add Money Error:", error);
+        res.status(500).json({ message: "Failed to add money." });
+    }
+});
+
+app.post('/api/player/:name/deduct-money', async (req, res) => {
+    const playerName = req.params.name;
+    const { amount } = req.body;
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+    try {
+        await sampDbPool.query("UPDATE `users` SET `bank` = `bank` - ? WHERE `username` = ?", [amount, playerName]);
+        res.json({ message: 'Money deducted successfully!' });
+    } catch (error) {
+        console.error("MySQL Deduct Money Error:", error);
+        res.status(500).json({ message: "Failed to deduct money." });
+    }
+});
+
+app.post('/api/player/:name/ban', async (req, res) => {
+    const playerName = req.params.name;
+    const { reason } = req.body;
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+    try {
+        await sampDbPool.query("INSERT INTO `bans` (`username`, `reason`) VALUES (?, ?)", [playerName, reason]);
+        res.json({ message: 'Player banned successfully!' });
+    } catch (error) {
+        console.error("MySQL Ban Player Error:", error);
+        res.status(500).json({ message: "Failed to ban player." });
+    }
+});
+
+
 app.get('/api/logs/:type', async (req, res) => {
     const validTypes = { admin: 'log_admin', faction: 'log_faction', gang: 'log_gang' };
     const logType = req.params.type;
