@@ -67,6 +67,7 @@ function getFactionName(factionId) {
     switch (factionId) {
         case 1: return "Police";
         case 2: return "Medic/Fire";
+        case 3: return "News";
         case 4: return "Government";
         case 5: return "Mechanic";
         case 16: return "EFCC";
@@ -84,7 +85,7 @@ async function sendToDiscord(webhookUrl, embed) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                username: "NV:RP Alerter",
+                username: "NVRP ALERTER BOT",
                 avatar_url: "https://i.imgur.com/4M34hi2.png",
                 embeds: [embed]
             })
@@ -235,6 +236,7 @@ app.post('/api/player/:name/add-money', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
         await sampDbPool.query("UPDATE `users` SET `bank` = `bank` + ? WHERE `username` = ?", [amount, playerName]);
+        await sampDbPool.query("INSERT INTO `log_admin` (`date`, `description`) VALUES (NOW(), ?)", [`[ADMIN] Added $${parseInt(amount).toLocaleString()} to ${playerName}`]);
         res.json({ message: 'Money added successfully!' });
     } catch (error) {
         console.error("MySQL Add Money Error:", error);
@@ -248,6 +250,7 @@ app.post('/api/player/:name/deduct-money', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
         await sampDbPool.query("UPDATE `users` SET `bank` = `bank` - ? WHERE `username` = ?", [amount, playerName]);
+        await sampDbPool.query("INSERT INTO `log_admin` (`date`, `description`) VALUES (NOW(), ?)", [`[ADMIN] Deducted $${parseInt(amount).toLocaleString()} from ${playerName}`]);
         res.json({ message: 'Money deducted successfully!' });
     } catch (error) {
         console.error("MySQL Deduct Money Error:", error);
@@ -261,6 +264,7 @@ app.post('/api/player/:name/ban', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
         await sampDbPool.query("INSERT INTO `bans` (`username`, `reason`) VALUES (?, ?)", [playerName, reason]);
+        await sampDbPool.query("INSERT INTO `log_admin` (`date`, `description`) VALUES (NOW(), ?)", [`[ADMIN] Banned ${playerName} for: ${reason}`]);
         res.json({ message: 'Player banned successfully!' });
     } catch (error) {
         console.error("MySQL Ban Player Error:", error);
