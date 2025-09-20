@@ -6,11 +6,13 @@ const { MongoClient, ObjectId } = require('mongodb');
 const mysql = require('mysql2/promise');
 const cron = require('node-cron');
 const factionRoutes = require('./faction-routes'); // Import the new faction routes module
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- CREDENTIALS & CONFIGURATION ---
+const GEMINI_API_KEY = "AIzaSyDkYapPWNIZuYdt6F-OlG2ov7Zrd9bIZe8";
 const DONATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014006836199526/OE4J0sWbDSxcePTAH0qgE8JKa5BDTS5Zj0YpjNcTu55dcA5oI3j7WVUM7zzbasF-GHK5";
 const APPLICATIONS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418014141452386405/6zo3kwZ24-RakI_btJN8kiegGnuwkSvN5SPmBeQJ9j_Wv2IsE3mpZGLf4KgOY_h1Z2X3";
 const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
@@ -378,25 +380,31 @@ app.get('/api/economy-stats', async (req, res) => {
 app.post('/api/gemini-analysis', async (req, res) => {
     const { circulationHistory, serverAssetValue } = req.body;
 
-    // NOTE: This is a placeholder for a real Gemini API call.
-    // In a production environment, you would use the Gemini API SDK here.
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-preview-0514" });
+
     const prompt = `
-        Analyze the following economic data for a virtual game server and provide a prediction for the total circulation in the next 24 hours.
+        You are an expert financial analyst for a virtual game server gta SAMP to be precised. Your analysis is not a simulation; it is a real-time prediction based on live data.
+        Analyze the following economic data and provide a prediction for the total circulation in the next 24 hours.
         - Current Total Circulation: ₦${circulationHistory[circulationHistory.length - 1].total_circulation.toLocaleString()}
         - Total Server Asset Value: ₦${serverAssetValue.toLocaleString()}
         - Circulation History (last 30 days): ${circulationHistory.map(d => `₦${d.total_circulation.toLocaleString()}`).join(', ')}
 
         Based on this data, provide a percentage prediction for the change in total circulation over the next 24 hours.
-        Also, provide a brief explanation for your prediction.
+        Also, provide a brief explanation for your prediction, highlighting key trends and factors.
         
         Format your response as a JSON object with two keys: "prediction" (a number) and "explanation" (a string).
     `;
 
-    // Simulated Gemini Response
-    const prediction = (Math.random() * 5 - 2).toFixed(2); // Random prediction between -2% and +3%
-    const explanation = `The server has seen a steady growth in circulation over the past month, with a few dips. The current total server asset value suggests a healthy economy. Based on these trends, a slight increase of ${prediction}% is expected in the next 24 hours as players continue to engage in economic activities.`;
-
-    res.json({ prediction, explanation });
+    try {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        res.json(JSON.parse(text));
+    } catch (error) {
+        console.error("Gemini API Error:", error);
+        res.status(500).json({ message: "Failed to get analysis from Gemini." });
+    }
 });
 
 
