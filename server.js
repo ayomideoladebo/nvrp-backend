@@ -5,7 +5,7 @@ const cors = require('cors');
 const { MongoClient, ObjectId } = require('mongodb');
 const mysql = require('mysql2/promise');
 const cron = require('node-cron');
-const factionRoutes = require('./faction-routes'); // Import the faction routes module
+const factionRoutes = require('./faction-routes'); // Import the new faction routes module
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,7 +17,6 @@ const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918
 const FACTION_LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
 const GANG_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418402752211451944/XT6G-Q96LobSbmoubUJ3QBxux9E9F1f3oBklBQ28ztE06SYE4jXdvnLmvPMJKe6wfP1T";
 const EVENTS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418604487060226179/N1MoYe7h7wkwsIQjaQ9Nb6Vn4lYmTJ0a2QvJwh1CG3RyCGOVFOyBcPkiWWyhUCJ2YCvK";
- // <<<--- ADD THIS LINE AND YOUR WEBHOOK URL
 
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp";
 const DB_NAME = "nigeria-vibe-rp";
@@ -84,7 +83,7 @@ async function sendToDiscord(webhookUrl, embed) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                username: "NVRP ALERTER",
+                username: "NV:RP Alerter",
                 avatar_url: "https://i.imgur.com/4M34hi2.png",
                 embeds: [embed]
             })
@@ -101,7 +100,7 @@ async function sendToDiscord(webhookUrl, embed) {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public'))); // Serve static files like HTML
+app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const storage = multer.diskStorage({
     destination: './uploads/',
@@ -201,7 +200,7 @@ app.get('/api/player/:name', async (req, res) => {
 app.post('/api/player/:name/adjust-money', async (req, res) => {
     const { name } = req.params;
     const { amount, reason } = req.body;
-    const adminName = "Admin"; // This would ideally come from a logged-in user's session
+    const adminName = "Admin";
 
     if (!sampDbPool) return res.status(503).json({ message: "Game database not connected." });
     if (isNaN(parseInt(amount)) || !reason) return res.status(400).json({ message: "Invalid amount or reason provided."});
@@ -233,15 +232,13 @@ app.post('/api/player/:name/ban', async (req, res) => {
     if (!reason) return res.status(400).json({ message: "A reason is required to ban a player." });
 
     try {
-        const [[player]] = await sampDbPool.query("SELECT ip FROM users WHERE username = ?", [name]);
+        const [[player]] = await sampDbPool.query("SELECT last_ip FROM users WHERE username = ?", [name]);
         if (!player) {
             return res.status(404).json({ message: "Player not found." });
         }
 
-        // Add to bans table
         await sampDbPool.query("INSERT INTO bans (username, ip, reason) VALUES (?, ?, ?)", [name, player.last_ip || 'IP_Not_Found', reason]);
         
-        // Log the administrative action
         const logMessage = `${adminName} banned player ${name}. Reason: ${reason}`;
         await sampDbPool.query("INSERT INTO `log_admin` (`date`, `description`) VALUES (NOW(), ?)", [logMessage]);
 
@@ -324,22 +321,41 @@ app.get('/api/logs/:type', async (req, res) => {
 app.get('/api/economy-stats', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     try {
+        // Consolidated queries for all economy data
         const queries = [
-            sampDbPool.query("SELECT SUM(cash) AS totalPlayerCash, SUM(bank) AS totalPlayerBank FROM users"),
+            // New Analytics Queries
             sampDbPool.query("SELECT SUM(price) AS totalVehicleValue FROM vehicles WHERE ownerid != 0"),
             sampDbPool.query("SELECT SUM(price) AS totalHouseValue FROM houses WHERE ownerid != -1"),
-            sampDbPool.query("SELECT SUM(cash) as totalBusinessCash FROM businesses"),
             sampDbPool.query("SELECT total_asset_value, total_circulation FROM economy_snapshots ORDER BY snapshot_date DESC LIMIT 1"),
+            sampDbPool.query("SELECT snapshot_date, total_asset_value, total_circulation FROM economy_snapshots ORDER BY snapshot_date DESC LIMIT 30"),
+            
+            // Original Legacy Queries
+            sampDbPool.query("SELECT SUM(cash) AS totalPlayerCash, SUM(bank) AS totalPlayerBank FROM users"),
+            sampDbPool.query(`SELECT CASE WHEN (cash + bank) BETWEEN 0 AND 25000 THEN 'Newcomer (₦0 - ₦25k)' WHEN (cash + bank) BETWEEN 25001 AND 150000 THEN 'Working Class (₦25k - ₦150k)' WHEN (cash + bank) BETWEEN 150001 AND 750000 THEN 'Middle Class (₦150k - ₦750k)' ELSE 'Wealthy (₦750k+)' END AS wealthBracket, COUNT(*) AS playerCount FROM users GROUP BY wealthBracket ORDER BY MIN(cash + bank)`),
+            sampDbPool.query("SELECT modelid, COUNT(*) AS vehicleCount FROM vehicles GROUP BY modelid ORDER BY vehicleCount DESC LIMIT 10"),
+            sampDbPool.query("SELECT SUM(cash) as totalBusinessCash FROM businesses"),
+            sampDbPool.query("SELECT username, (cash + bank) as total_wealth FROM users ORDER BY total_wealth DESC LIMIT 10"),
+            sampDbPool.query("SELECT biz_desc, cash FROM businesses WHERE ownerid != 0 ORDER BY cash DESC LIMIT 10"),
+            sampDbPool.query("SELECT name, faction_treasury FROM factions ORDER BY faction_treasury DESC"),
+            sampDbPool.query("SELECT gov_treasury FROM settings")
         ];
 
         const [
-            [[playerWealth]], 
             [[vehicleAssets]], 
             [[houseAssets]], 
+            [lastSnapshot], 
+            historyData,
+            [[playerWealth]],
+            wealthDistribution,
+            topVehicles,
             [[businessAssets]],
-            [lastSnapshot]
-        ] = await Promise.all(queries.map(p => p.catch(e => [[{}]]) )); // Safer promise handling
+            wealthiestPlayers,
+            topBusinesses,
+            factionTreasuries,
+            [[governmentTreasuryResult]]
+        ] = await Promise.all(queries.map(p => p.catch(e => { console.error(e); return [[{}]]; })) );
 
+        // --- Calculate New Analytics ---
         const totalPlayerCash = parseInt(playerWealth.totalPlayerCash) || 0;
         const totalPlayerBank = parseInt(playerWealth.totalPlayerBank) || 0;
         const totalVehicleValue = parseInt(vehicleAssets.totalVehicleValue) || 0;
@@ -347,11 +363,14 @@ app.get('/api/economy-stats', async (req, res) => {
         const totalBusinessCash = parseInt(businessAssets.totalBusinessCash) || 0;
 
         const totalServerAssetValue = totalPlayerCash + totalPlayerBank + totalVehicleValue + totalHouseValue + totalBusinessCash;
-
         const previousAssetValue = lastSnapshot ? parseInt(lastSnapshot.total_asset_value) : 0;
         const gsp = previousAssetValue > 0 ? totalServerAssetValue - previousAssetValue : 0;
-
+        
+        // --- Prepare Legacy Data ---
+        const yesterdayCirculation = lastSnapshot ? parseInt(lastSnapshot.total_circulation) : 0;
+        
         res.json({
+            // New Data
             totalServerAssetValue,
             gsp,
             assetDistribution: {
@@ -361,8 +380,18 @@ app.get('/api/economy-stats', async (req, res) => {
                 houses: totalHouseValue,
                 businesses: totalBusinessCash
             },
+            assetHistory: historyData,
+            
+            // Original Data, now derived from the same queries
             totalCirculation: totalPlayerCash + totalPlayerBank,
-            previousCirculation: lastSnapshot ? parseInt(lastSnapshot.total_circulation) : 0
+            yesterdayCirculation: yesterdayCirculation,
+            governmentTreasury: governmentTreasuryResult.gov_treasury || 0,
+            wealthDistribution: wealthDistribution || [],
+            topVehicles: topVehicles || [],
+            wealthiestPlayers: wealthiestPlayers || [],
+            topBusinesses: topBusinesses || [],
+            factionTreasuries: factionTreasuries || [],
+            circulationHistory: historyData // Can be reused for the old chart
         });
 
     } catch (error) {
@@ -504,11 +533,11 @@ Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
                     (parseInt(houseAssets.totalHouseValue) || 0) +
                     (parseInt(businessAssets.totalBusinessCash) || 0);
 
-                const totalCirculation = parseInt(circulation.totalCirculation) || 0;
+                const totalCirculationValue = parseInt(circulation.totalCirculation) || 0;
 
                 await sampDbPool.query(
                     "INSERT INTO economy_snapshots (snapshot_date, total_circulation, total_asset_value) VALUES (CURDATE(), ?, ?) ON DUPLICATE KEY UPDATE total_circulation = VALUES(total_circulation), total_asset_value = VALUES(total_asset_value)",
-                    [totalCirculation, totalAssetValue]
+                    [totalCirculationValue, totalAssetValue]
                 );
                 console.log(`Successfully saved economy snapshot. Total Assets: ₦${totalAssetValue.toLocaleString()}`);
 
@@ -545,4 +574,3 @@ Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
 }).catch(err => {
     console.error("Failed to initialize databases and start server.", err);
 });
-
