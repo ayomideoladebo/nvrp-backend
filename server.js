@@ -319,7 +319,10 @@ app.get('/api/economy-stats', async (req, res) => {
             sampDbPool.query("SELECT total_circulation FROM economy_snapshots WHERE snapshot_date = CURDATE() - INTERVAL 1 DAY"),
             sampDbPool.query("SELECT total_circulation FROM economy_snapshots WHERE snapshot_date = CURDATE() - INTERVAL 7 DAY"),
             sampDbPool.query("SELECT snapshot_date, total_circulation FROM economy_snapshots ORDER BY snapshot_date DESC LIMIT 30"),
-            sampDbPool.query("SELECT gov_treasury FROM settings")
+            sampDbPool.query("SELECT gov_treasury FROM settings"),
+            sampDbPool.query("SELECT SUM(price) as totalBusinessValue FROM businesses"),
+            sampDbPool.query("SELECT SUM(price) as totalHouseValue FROM houses"),
+            sampDbPool.query("SELECT SUM(price) as totalVehicleValue FROM vehicles")
         ];
 
         const results = await Promise.all(queries.map(p => p.catch(e => [[]])));
@@ -337,12 +340,21 @@ app.get('/api/economy-stats', async (req, res) => {
         const weekAgoData = results[10][0][0] || { total_circulation: 0 };
         const historyData = results[11][0] || [];
         const governmentTreasury = results[12][0][0] || { gov_treasury: 0 };
+        const totalBusinessValue = results[13][0][0] || { totalBusinessValue: 0 };
+        const totalHouseValue = results[14][0][0] || { totalHouseValue: 0 };
+        const totalVehicleValue = results[15][0][0] || { totalVehicleValue: 0 };
         
         const cashNum = parseInt(playerWealth.totalPlayerCash) || 0;
         const bankNum = parseInt(playerWealth.totalPlayerBank) || 0;
+        const totalCirculation = cashNum + bankNum;
+        
+        const serverAssetValue = totalCirculation +
+                                  (parseInt(totalBusinessValue.totalBusinessValue) || 0) +
+                                  (parseInt(totalHouseValue.totalHouseValue) || 0) +
+                                  (parseInt(totalVehicleValue.totalVehicleValue) || 0);
 
         res.json({
-            totalCirculation: cashNum + bankNum,
+            totalCirculation,
             totalPlayerCash: cashNum,
             totalPlayerBank: bankNum,
             wealthDistribution, topVehicles,
@@ -353,7 +365,8 @@ app.get('/api/economy-stats', async (req, res) => {
             yesterdayCirculation: parseInt(yesterdayData.total_circulation) || 0,
             weekAgoCirculation: parseInt(weekAgoData.total_circulation) || 0,
             circulationHistory: historyData,
-            governmentTreasury: governmentTreasury.gov_treasury
+            governmentTreasury: governmentTreasury.gov_treasury,
+            serverAssetValue
         });
 
     } catch (error) {
@@ -361,6 +374,23 @@ app.get('/api/economy-stats', async (req, res) => {
         res.status(500).json({ message: "Failed to fetch economy statistics." });
     }
 });
+
+app.post('/api/gemini-prediction', async (req, res) => {
+    const { circulationHistory } = req.body;
+    // This is a simplified prediction model.
+    // For a real AI prediction, you would use a more sophisticated model.
+    if (circulationHistory.length < 2) {
+        return res.json({ prediction: 0 });
+    }
+    const changes = [];
+    for (let i = 1; i < circulationHistory.length; i++) {
+        const change = (circulationHistory[i].total_circulation - circulationHistory[i-1].total_circulation) / circulationHistory[i-1].total_circulation;
+        changes.push(change);
+    }
+    const averageChange = changes.reduce((a, b) => a + b, 0) / changes.length;
+    res.json({ prediction: averageChange * 100 });
+});
+
 
 app.get('/api/events', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
