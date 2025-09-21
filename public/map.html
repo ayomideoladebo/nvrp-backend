@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Map - NV:RP Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --font-heading: 'Audiowide', sans-serif; 
+            --font-body: 'Rajdhani', sans-serif; 
+            --color-green-accent: #39FF14; 
+            --color-cyan-accent: #00FFFF;
+        }
+        body { 
+            font-family: var(--font-body); 
+            overflow: hidden;
+        }
+        h1, h2, h3 { font-family: var(--font-heading); }
+        .text-glow-green { text-shadow: 0 0 5px var(--color-green-accent), 0 0 10px var(--color-green-accent); }
+
+        #map-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+            background-color: #111827;
+        }
+        #map-container.grabbing {
+            cursor: grabbing;
+        }
+
+        #map-image {
+            position: absolute;
+            width: 2048px;
+            height: 2048px;
+            background-image: url('https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/942d6817-886f-440a-a790-43043fcb13ae/db1p8cc-f8729260-60cf-4248-829a-8b705c485256.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi85NDJkNjgxNy04ODZmLTQ0MGEtYTc5MC00MzA0M2ZjYjEzYWUvZGIxcDhjYy1mODcyOTI2MC02MGNmLTQyNDgtODI5YS04YjcwNWM0ODUyNTYuanBnIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmZpbGUuZG93bmxvYWQiXX0.k3fCJFdT-Neio0rGT92VJXUDX4QedT5UJBWQYsaFfT4');
+            background-size: cover;
+            image-rendering: -webkit-optimize-contrast;
+            transform-origin: 0 0;
+        }
+
+        #heatmap-canvas {
+            position: absolute;
+            width: 2048px;
+            height: 2048px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        #heatmap-canvas.visible {
+            opacity: 0.9;
+        }
+
+        .player-marker {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            will-change: transform;
+            z-index: 10;
+            cursor: pointer;
+        }
+
+        .player-dot {
+            border-radius: 50%;
+            transition: all 0.2s ease-in-out;
+            border: 3px solid white;
+        }
+
+        .player-name {
+            position: absolute;
+            bottom: 100%;
+            margin-bottom: 8px;
+            background-color: rgba(17, 24, 39, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            pointer-events: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(2px);
+        }
+        
+        .player-name::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(17, 24, 39, 0.8) transparent transparent transparent;
+        }
+        
+        .player-marker:hover { z-index: 11; }
+        
+        .player-marker.located .player-dot { animation: pulse 1.5s infinite; }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(255, 0, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+        }
+
+        /* Modal Styles */
+        .modal-overlay { transition: opacity 0.3s ease; }
+        .modal-content { transition: transform 0.3s ease, opacity 0.3s ease; }
+    </style>
+</head>
+<body class="bg-gray-950 text-white">
+    <div id="map-container">
+        <div id="map-image">
+            <canvas id="heatmap-canvas" width="2048" height="2048"></canvas>
+        </div>
+    </div>
+    
+    <div class="absolute top-4 left-4 bg-gray-900/80 p-4 rounded-lg shadow-lg z-20 max-w-sm">
+        <h1 class="text-2xl font-bold text-glow-green mb-2">NV:RP Live Map</h1>
+        <p class="text-gray-300">Total Players Tracked: <span id="player-count">0</span></p>
+        <div class="mt-4">
+            <label for="player-search" class="block text-sm font-medium text-gray-300">Search Player</label>
+            <div class="mt-1 flex rounded-md shadow-sm">
+                <input type="text" id="player-search" class="block w-full rounded-none rounded-l-md bg-gray-800 border-gray-600 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm px-3 py-2" placeholder="Enter username...">
+                <button id="search-btn" class="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-600 bg-gray-700 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-gray-600">
+                    <span>Locate</span>
+                </button>
+            </div>
+        </div>
+        <div class="mt-4">
+            <label class="flex items-center space-x-2">
+                <input type="checkbox" id="heatmap-toggle" class="form-checkbox h-5 w-5 text-cyan-400 bg-gray-700 border-gray-500 rounded focus:ring-cyan-500">
+                <span class="text-gray-300">Show Player Heatmap</span>
+            </label>
+        </div>
+        <a href="dashboard.html" class="inline-block mt-4 text-cyan-400 hover:text-cyan-300 transition-colors duration-200">← Back to Dashboard</a>
+    </div>
+
+    <div id="coord-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 opacity-0">
+        <div class="modal-content bg-gray-900 border-2 border-[var(--color-cyan-accent)] rounded-lg p-6 w-full max-w-sm text-center opacity-0 transform scale-95">
+            <h3 id="modal-player-name" class="text-2xl font-bold mb-4 text-glow-green">Player Name</h3>
+            <p id="modal-coords" class="text-lg text-white font-mono bg-gray-800 p-4 rounded-md"></p>
+            <button id="close-coord-modal" class="mt-6 w-full bg-[var(--color-cyan-accent)] text-black px-6 py-2 rounded-md font-bold hover:bg-[var(--color-cyan-accent)]/80">Close</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/simpleheat@0.4.0/simpleheat.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const backendUrl = "https://nigeria-vibe-backend.onrender.com";
+            const mapContainer = document.getElementById('map-container');
+            const mapImage = document.getElementById('map-image');
+            const playerCountSpan = document.getElementById('player-count');
+            const searchInput = document.getElementById('player-search');
+            const searchBtn = document.getElementById('search-btn');
+            const coordModal = document.getElementById('coord-modal');
+            const modalContent = coordModal.querySelector('.modal-content');
+            const modalPlayerName = document.getElementById('modal-player-name');
+            const modalCoords = document.getElementById('modal-coords');
+            const closeCoordModalBtn = document.getElementById('close-coord-modal');
+            const heatmapToggle = document.getElementById('heatmap-toggle');
+            const heatmapCanvas = document.getElementById('heatmap-canvas');
+
+            let playersData = [];
+            const heat = simpleheat(heatmapCanvas);
+
+            const factionColors = {
+                1: '#3B82F6',  // Police (Blue)
+                2: '#EF4444',  // Medic/Fire (Red)
+                4: '#F59E0B',  // Government (Yellow)
+                5: '#A855F7',  // Mechanic (Purple)
+                16: '#10B981', // EFCC (Green)
+                default: '#9CA3AF' // Civilian (Gray)
+            };
+
+            function getFactionColor(factionId) {
+                return factionColors[factionId] || factionColors.default;
+            }
+
+            function convertCoordinates(x, y) {
+                const mapWidth = 2048;
+                const mapHeight = 2048;
+                const gameMinX = -3000;
+                const gameMaxX = 3000;
+                const gameMinY = -3000;
+                const gameMaxY = 3000;
+                const percentX = (x - gameMinX) / (gameMaxX - gameMinX);
+                const percentY = (y - gameMinY) / (gameMaxY - gameMinY);
+                const pixelX = percentX * mapWidth;
+                const pixelY = (1 - percentY) * mapHeight;
+                return { left: pixelX, top: pixelY };
+            }
+
+            function updateDotStyles() {
+                const markers = document.querySelectorAll('.player-marker');
+                const newScale = 1 / scale;
+                const clampedScale = Math.max(0.75, Math.min(1.5, newScale));
+                markers.forEach(marker => {
+                    marker.style.transform = `translate(-50%, -50%) scale(${clampedScale})`;
+                });
+            }
+            
+            function drawHeatmap() {
+                if (!heatmapToggle.checked) return;
+                const locations = playersData.map(p => {
+                    const { left, top } = convertCoordinates(p.pos_x, p.pos_y);
+                    return [left, top, 1]; // [x, y, intensity]
+                });
+                heat.data(locations);
+                heat.max(10); // Max intensity
+                heat.radius(40, 25); // (radius, blur)
+                heat.draw();
+            }
+
+            async function updatePlayerLocations() {
+                try {
+                    const response = await fetch(`${backendUrl}/api/player-locations`);
+                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                    playersData = await response.json();
+
+                    playerCountSpan.textContent = playersData.length;
+                    mapImage.innerHTML = '';
+                    mapImage.appendChild(heatmapCanvas); // Re-add canvas after clearing
+
+                    playersData.forEach(player => {
+                        if (typeof player.pos_x !== 'number' || typeof player.pos_y !== 'number') return;
+                        const { left, top } = convertCoordinates(player.pos_x, player.pos_y);
+                        
+                        const marker = document.createElement('div');
+                        marker.className = 'player-marker';
+                        marker.style.left = `${left}px`;
+                        marker.style.top = `${top}px`;
+                        marker.id = `player-${player.username}`;
+                        
+                        const nameLabel = document.createElement('div');
+                        nameLabel.className = 'player-name';
+                        nameLabel.textContent = player.username;
+                        
+                        const dot = document.createElement('div');
+                        const statusClass = player.is_online ? 'online' : 'offline';
+                        dot.className = `player-dot ${statusClass}`;
+                        dot.style.backgroundColor = getFactionColor(player.faction);
+                        dot.style.width = '16px';
+                        dot.style.height = '16px';
+                        dot.style.border = `3px solid ${player.is_online ? 'white' : '#4B5563'}`; // Different border for offline
+                        dot.dataset.username = player.username;
+                        dot.dataset.posX = player.pos_x.toFixed(2);
+                        dot.dataset.posY = player.pos_y.toFixed(2);
+
+                        marker.appendChild(nameLabel);
+                        marker.appendChild(dot);
+                        mapImage.appendChild(marker);
+                    });
+                    
+                    updateDotStyles();
+                    drawHeatmap();
+
+                } catch (error) {
+                    console.error('Failed to fetch player locations:', error);
+                    playerCountSpan.textContent = 'Error';
+                }
+            }
+            
+            function showCoordModal(username, posX, posY) {
+                modalPlayerName.textContent = username;
+                modalCoords.textContent = `X: ${posX}, Y: ${posY}`;
+                coordModal.classList.remove('hidden');
+                setTimeout(() => {
+                    coordModal.classList.remove('opacity-0');
+                    modalContent.classList.remove('opacity-0', 'scale-95');
+                }, 10);
+            }
+            
+            function hideCoordModal() {
+                coordModal.classList.add('opacity-0');
+                modalContent.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    coordModal.classList.add('hidden');
+                }, 300);
+            }
+
+            function flyToPlayer(x, y) {
+                scale = 1.5;
+                const { left, top } = convertCoordinates(x, y);
+                currentTranslate.x = -left * scale + (mapContainer.clientWidth / 2);
+                currentTranslate.y = -top * scale + (mapContainer.clientHeight / 2);
+                applyTransform(true);
+            }
+
+            function handleSearch() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const foundPlayer = playersData.find(p => p.username.toLowerCase() === searchTerm);
+                
+                document.querySelectorAll('.located').forEach(el => el.classList.remove('located'));
+                if (foundPlayer) {
+                    flyToPlayer(foundPlayer.pos_x, foundPlayer.pos_y);
+                    const marker = document.getElementById(`player-${foundPlayer.username}`);
+                    if (marker) {
+                        marker.classList.add('located');
+                        setTimeout(() => {
+                            marker.classList.remove('located');
+                        }, 3000);
+                    }
+                } else {
+                    alert('Player not found!');
+                }
+            }
+
+            searchBtn.addEventListener('click', handleSearch);
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleSearch();
+            });
+
+            mapImage.addEventListener('click', (e) => {
+                const dot = e.target.closest('.player-dot');
+                if (dot) {
+                    showCoordModal(dot.dataset.username, dot.dataset.posX, dot.dataset.posY);
+                }
+            });
+
+            closeCoordModalBtn.addEventListener('click', hideCoordModal);
+            coordModal.addEventListener('click', (e) => {
+                if (e.target === coordModal) hideCoordModal();
+            });
+
+            heatmapToggle.addEventListener('change', () => {
+                if (heatmapToggle.checked) {
+                    heatmapCanvas.classList.add('visible');
+                    drawHeatmap();
+                } else {
+                    heatmapCanvas.classList.remove('visible');
+                }
+            });
+
+            // --- REFACTORED Map Panning and Zooming Logic ---
+            let isDragging = false;
+            let startPos = { x: 0, y: 0 };
+            let scale = 0.5;
+            let currentTranslate = { x: 0, y: 0 };
+
+            function applyTransform(withTransition = false) {
+                mapImage.style.transition = withTransition ? 'transform 0.5s ease-out' : 'none';
+                mapImage.style.transform = `translate(${currentTranslate.x}px, ${currentTranslate.y}px) scale(${scale})`;
+                updateDotStyles();
+            }
+
+            function initializeMapPosition() {
+                const mapWidth = 2048;
+                const containerWidth = mapContainer.clientWidth;
+                // Calculate the scale to fit the map width to the container width
+                scale = containerWidth / mapWidth;
+                // Center the map
+                currentTranslate.x = 0;
+                currentTranslate.y = (mapContainer.clientHeight - 2048 * scale) / 2;
+                applyTransform();
+            }
+
+            mapContainer.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startPos.x = e.clientX - currentTranslate.x;
+                startPos.y = e.clientY - currentTranslate.y;
+                mapContainer.classList.add('grabbing');
+            });
+            mapContainer.addEventListener('mouseup', () => { isDragging = false; mapContainer.classList.remove('grabbing'); });
+            mapContainer.addEventListener('mouseleave', () => { isDragging = false; mapContainer.classList.remove('grabbing'); });
+            mapContainer.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                currentTranslate.x = e.clientX - startPos.x;
+                currentTranslate.y = e.clientY - startPos.y;
+                applyTransform();
+            });
+            mapContainer.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const scaleAmount = 1.1;
+                const mouseX = e.clientX - mapContainer.getBoundingClientRect().left;
+                const mouseY = e.clientY - mapContainer.getBoundingClientRect().top;
+                let newScale = e.deltaY < 0 ? scale * scaleAmount : scale / scaleAmount;
+                newScale = Math.max(0.1, Math.min(5.0, newScale)); // Increased max zoom to 5.0
+                const scaleRatio = newScale / scale;
+                currentTranslate.x = mouseX - (mouseX - currentTranslate.x) * scaleRatio;
+                currentTranslate.y = mouseY - (mouseY - currentTranslate.y) * scaleRatio;
+                scale = newScale;
+
+                applyTransform();
+            });
+
+            // Initialize and then update periodically
+            initializeMapPosition();
+            updatePlayerLocations();
+            setInterval(updatePlayerLocations, 5000);
+            window.addEventListener('resize', initializeMapPosition); // Re-center map on window resize
+        });
+    </script>
+</body>
+</html>

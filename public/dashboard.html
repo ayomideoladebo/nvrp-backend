@@ -35,16 +35,66 @@
         #raffle-names::-webkit-scrollbar {
             display: none; /* Chrome, Safari, Opera*/
         }
+        /* Custom scrollbar for sidebar */
+        #sidebar nav::-webkit-scrollbar {
+          width: 8px;
+        }
+        #sidebar nav::-webkit-scrollbar-track {
+          background: #1f2937; /* bg-gray-800 */
+        }
+        #sidebar nav::-webkit-scrollbar-thumb {
+          background: #4b5563; /* bg-gray-600 */
+          border-radius: 4px;
+        }
+        #sidebar nav::-webkit-scrollbar-thumb:hover {
+          background: #6b7280; /* bg-gray-500 */
+        }
+        .slot-machine-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 150px;
+            background: #111;
+            border-radius: 10px;
+            border: 2px solid var(--color-cyan-accent);
+            overflow: hidden;
+            padding: 0 20px;
+        }
+        .slot-reel {
+            overflow: hidden;
+            height: 100px;
+            position: relative;
+        }
+        .slot-reel-inner {
+            display: flex;
+            flex-direction: column;
+            transition: transform 5s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+        .slot-item {
+            height: 100px;
+            line-height: 100px;
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-align: center;
+            color: #fff;
+        }
+        .winner .slot-item {
+            color: var(--color-green-accent);
+            text-shadow: 0 0 10px var(--color-green-accent);
+        }
+        .duplicate-ip {
+            color: #FF5733; /* A reddish-orange color */
+        }
     </style>
 </head>
 <body class="bg-gray-950 text-white min-h-screen">
     
-    <aside id="sidebar" class="bg-gray-900 text-white w-64 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 z-50">
-        <div class="p-5 text-center">
+    <aside id="sidebar" class="bg-gray-900 text-white w-64 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 z-50 flex flex-col">
+        <div class="p-5 text-center flex-shrink-0">
             <h1 class="text-3xl font-black text-[var(--color-green-accent)]">NV:RP</h1>
             <p class="text-sm text-gray-400"><a href="faction.html">Admin Panel</a></p>
         </div>
-        <nav class="mt-8">
+        <nav class="mt-8 flex-1 overflow-y-auto">
             <a href="#dashboard" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
                 <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg> Dashboard
             </a>
@@ -56,6 +106,15 @@
             </a>
             <a href="#lookup" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
                 <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg> Player Lookup
+            </a>
+            <a href="#all-players" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-1.157a6 6 0 01-1.12-3.843" /></svg> All Players
+            </a>
+            <a href="map.html" class="flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 16.382V5.618a1 1 0 00-1.447-.894L15 7m-6 10v-5.5m0 5.5v-5.5m0 0l6-3m-6 3l-6-3"/></svg> Live Map
+            </a>
+            <a href="faction.html" class="flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
+                <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 14l9-5-9-5-9 5 9 5z" /><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-5.998 12.078 12.078 0 01.665-6.479L12 14z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-5.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222 4 2.222V20" /></svg> Faction Record
             </a>
             <a href="#players" class="nav-link flex items-center py-3 px-5 text-lg text-gray-300 hover:bg-gray-800 hover:text-white">
                 <svg class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg> Applications
@@ -110,20 +169,25 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                     <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
                         <p class="text-sm text-gray-400">Live Total Circulation</p>
-                        <p id="total-circulation" class="text-4xl font-bold text-green-400">₦0</p>
+                        <p id="total-circulation" class="text-3xl lg:text-4xl font-bold text-green-400">₦0</p>
                         <p id="circulation-change" class="text-sm font-semibold mt-1">&nbsp;</p>
                     </div>
                     <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
                         <p class="text-sm text-gray-400">Yesterday's Circulation</p>
-                        <p id="yesterday-circulation" class="text-4xl font-bold text-gray-300">₦0</p>
+                        <p id="yesterday-circulation" class="text-3xl lg:text-4xl font-bold text-gray-300">₦0</p>
                     </div>
                     <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
-                        <p class="text-sm text-gray-400">7 Days Ago</p>
-                        <p id="week-ago-circulation" class="text-4xl font-bold text-gray-300">₦0</p>
+                        <p class="text-sm text-gray-400">Total Server Asset Value</p>
+                        <p id="server-asset-value" class="text-3xl lg:text-4xl font-bold text-cyan-400">₦0</p>
+                    </div>
+                    <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg">
+                        <p class="text-sm text-gray-400">Government Treasury</p>
+                        <p id="government-treasury" class="text-3xl lg:text-4xl font-bold text-cyan-400">₦0</p>
                     </div>
                     <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg col-span-1 md:col-span-2 lg:col-span-1">
-                        <p class="text-sm text-gray-400">Government Treasury</p>
-                        <p id="government-treasury" class="text-4xl font-bold text-cyan-400">₦0</p>
+                        <p class="text-sm text-gray-400">Abolo AI Prediction (24h)</p>
+                        <p id="gemini-prediction" class="text-3xl lg:text-4xl font-bold text-yellow-400">--%</p>
+                        <button id="gemini-explanation-btn" class="text-xs text-gray-400 hover:text-white mt-1">Why?</button>
                     </div>
                 </div>
                 <div class="bg-gray-900/50 border border-gray-700 p-6 rounded-lg mb-8">
@@ -237,6 +301,23 @@
                  </form>
                  <div id="lookup-results" class="hidden"></div>
             </section>
+            <section id="all-players" class="page-content hidden">
+                <h2 class="text-4xl font-extrabold text-glow-green mb-8">All Players</h2>
+                <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto">
+                    <table class="w-full text-left min-w-[800px]">
+                        <thead class="bg-gray-800">
+                            <tr>
+                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Username</th>
+                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Level</th>
+                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Hours</th>
+                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">Faction</th>
+                                <th class="p-4 text-sm font-semibold text-green-400 uppercase">IP Address</th>
+                            </tr>
+                        </thead>
+                        <tbody id="all-players-tbody"></tbody>
+                    </table>
+                </div>
+            </section>
             <section id="players" class="page-content hidden">
                  <h2 class="text-4xl font-extrabold text-glow-green mb-8">Player Applications</h2>
                  <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6 overflow-x-auto"><table class="w-full text-left min-w-[800px]"><thead class="bg-gray-800"><tr><th class="p-4 text-sm font-semibold text-green-400 uppercase">Submitted</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Discord & In-Game</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Referral</th><th class="p-4 text-sm font-semibold text-green-400 uppercase">Answers</th></tr></thead><tbody id="players-tbody"></tbody></table></div>
@@ -268,23 +349,25 @@
             </section>
         </main>
     </div>
-
+    
     <div id="raffle-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 raffle-modal">
-        <div class="bg-gray-900 border-2 border-[var(--color-cyan-accent)] rounded-lg p-8 text-center w-full max-w-md relative">
+        <div class="bg-gray-900 border-2 border-[var(--color-cyan-accent)] rounded-lg p-8 text-center w-full max-w-lg relative">
             <button id="close-raffle-modal" class="absolute top-4 right-4 text-gray-400 hover:text-white">&times;</button>
             <h3 class="text-3xl font-bold mb-6 text-glow-green">Player Raffle</h3>
-            <div class="relative h-20 overflow-hidden mb-6 bg-gray-950 rounded-lg p-4">
-                <div id="raffle-names" class="absolute inset-0 flex flex-col items-center justify-center transition-transform duration-100 ease-linear">
-                    </div>
-                <div class="absolute inset-0 bg-gradient-to-b from-gray-950 via-transparent to-gray-950"></div>
-                 <div class="absolute inset-y-0 left-0 w-full h-full flex items-center justify-center border-y-2 border-[var(--color-cyan-accent)]">
-                    <div id="winner-display" class="text-2xl font-bold text-white transition-opacity duration-300 opacity-0"></div>
-                 </div>
+            <div id="raffle-slot-machine" class="slot-machine-container mb-6">
             </div>
             <p id="raffle-status" class="text-gray-400 min-h-[1.5rem]">Click "Draw" to start the raffle!</p>
         </div>
     </div>
 
+    <div id="gemini-explanation-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-900 border-2 border-[var(--color-cyan-accent)] rounded-lg p-8 w-full max-w-lg relative">
+            <button id="close-gemini-modal" class="absolute top-4 right-4 text-gray-400 hover:text-white">&times;</button>
+            <h3 class="text-2xl font-bold mb-4 text-glow-green">Abolo AI Prediction Analysis</h3>
+            <p id="gemini-explanation-text" class="text-gray-300"></p>
+        </div>
+    </div>
+    
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         const backendUrl = "https://nigeria-vibe-backend.onrender.com";
@@ -306,6 +389,17 @@
         }
         navLinks.forEach(link => { link.addEventListener('click', (e) => { e.preventDefault(); window.location.hash = link.hash; }); });
         window.addEventListener('hashchange', () => showPage(window.location.hash));
+        
+        function getFactionName(factionId) {
+            switch (factionId) {
+                case 1: return "Police";
+                case 2: return "Medic/Fire";
+                case 4: return "Government";
+                case 5: return "Mechanic";
+                case 16: return "EFCC";
+                default: return "Civilian";
+            }
+        }
 
         const lookupPlayer = (playerName) => {
             if (!playerName) return;
@@ -430,59 +524,81 @@
         });
 
         let wealthChart, vehiclesChart, circulationHistoryChart;
+        let geminiExplanation = '';
+
         const fetchAndDisplayEconomyStats = async () => {
-            try {
-                const response = await fetch(`${backendUrl}/api/economy-stats`);
-                const data = await response.json();
+        try {
+            const response = await fetch(`${backendUrl}/api/economy-stats`);
+            const data = await response.json();
 
-                document.getElementById('total-circulation').textContent = `₦${data.totalCirculation.toLocaleString()}`;
-                document.getElementById('yesterday-circulation').textContent = `₦${data.yesterdayCirculation.toLocaleString()}`;
-                document.getElementById('week-ago-circulation').textContent = `₦${data.weekAgoCirculation.toLocaleString()}`;
-                document.getElementById('government-treasury').textContent = `₦${data.governmentTreasury.toLocaleString()}`;
+            document.getElementById('total-circulation').textContent = `₦${data.totalCirculation.toLocaleString()}`;
+            document.getElementById('yesterday-circulation').textContent = `₦${data.yesterdayCirculation.toLocaleString()}`;
+            document.getElementById('server-asset-value').textContent = `₦${data.serverAssetValue.toLocaleString()}`;
+            document.getElementById('government-treasury').textContent = `₦${data.governmentTreasury.toLocaleString()}`;
 
+            const predictionResponse = await fetch(`${backendUrl}/api/gemini-analysis`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    circulationHistory: data.circulationHistory,
+                    playerStats: data.playerStats // Pass the new playerStats object
+                })
+            });
+            const predictionData = await predictionResponse.json();
+            document.getElementById('gemini-prediction').textContent = `${predictionData.prediction}%`;
+            geminiExplanation = predictionData.explanation;
 
-                const changeElement = document.getElementById('circulation-change');
-                if (data.yesterdayCirculation > 0) {
-                    const change = ((data.totalCirculation - data.yesterdayCirculation) / data.yesterdayCirculation) * 100;
-                    changeElement.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}% vs Yesterday`;
-                    changeElement.className = `text-sm font-semibold mt-1 ${change >= 0 ? 'text-green-400' : 'text-red-400'}`;
-                } else {
-                    changeElement.textContent = 'Awaiting yesterday\'s data';
-                    changeElement.className = 'text-sm font-semibold mt-1 text-gray-400';
-                }
+            const changeElement = document.getElementById('circulation-change');
+            if (data.yesterdayCirculation > 0) {
+                const change = ((data.totalCirculation - data.yesterdayCirculation) / data.yesterdayCirculation) * 100;
+                changeElement.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}% vs Yesterday`;
+                changeElement.className = `text-sm font-semibold mt-1 ${change >= 0 ? 'text-green-400' : 'text-red-400'}`;
+            } else {
+                changeElement.textContent = 'Awaiting yesterday\'s data';
+                changeElement.className = 'text-sm font-semibold mt-1 text-gray-400';
+            }
 
-                const historyCtx = document.getElementById('circulation-history-chart').getContext('2d');
-                if(circulationHistoryChart) circulationHistoryChart.destroy();
-                const reversedHistory = data.circulationHistory.slice().reverse();
-                circulationHistoryChart = new Chart(historyCtx, { type: 'line', data: { labels: reversedHistory.map(d => new Date(d.snapshot_date).toLocaleDateString()), datasets: [{ label: 'Total Circulation', data: reversedHistory.map(d => d.total_circulation), borderColor: '#00FFFF', backgroundColor: 'rgba(0, 255, 255, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#D1D5DB' } }, x: { ticks: { color: '#D1D5DB' } } } } });
+            const historyCtx = document.getElementById('circulation-history-chart').getContext('2d');
+            if(circulationHistoryChart) circulationHistoryChart.destroy();
+            const reversedHistory = data.circulationHistory.slice().reverse();
+            circulationHistoryChart = new Chart(historyCtx, { type: 'line', data: { labels: reversedHistory.map(d => new Date(d.snapshot_date).toLocaleDateString()), datasets: [{ label: 'Total Circulation', data: reversedHistory.map(d => d.total_circulation), borderColor: '#00FFFF', backgroundColor: 'rgba(0, 255, 255, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#D1D5DB' } }, x: { ticks: { color: '#D1D5DB' } } } } });
 
-                const wealthCtx = document.getElementById('wealth-chart').getContext('2d');
-                if(wealthChart) wealthChart.destroy();
-                wealthChart = new Chart(wealthCtx, { type: 'doughnut', data: { labels: data.wealthDistribution.map(d => d.wealthBracket), datasets: [{ data: data.wealthDistribution.map(d => d.playerCount), backgroundColor: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444'], borderColor: '#1f2937' }] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: '#D1D5DB' } } } } });
+            const wealthCtx = document.getElementById('wealth-chart').getContext('2d');
+            if(wealthChart) wealthChart.destroy();
+            wealthChart = new Chart(wealthCtx, { type: 'doughnut', data: { labels: data.wealthDistribution.map(d => d.wealthBracket), datasets: [{ data: data.wealthDistribution.map(d => d.playerCount), backgroundColor: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444'], borderColor: '#1f2937' }] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: '#D1D5DB' } } } } });
 
-                const vehicleNames = { 411: 'Infernus', 560: 'Sultan', 476: 'Bullet', 559: 'Slamvan', 494: 'Hotring', 541: 'Cheetah', 487: 'Maverick', 562: 'Elegy', 460: 'NRG-500', 522: 'FCR-900' };
-                const vehiclesCtx = document.getElementById('vehicles-chart').getContext('2d');
-                if(vehiclesChart) vehiclesChart.destroy();
-                vehiclesChart = new Chart(vehiclesCtx, { type: 'bar', data: { labels: data.topVehicles.map(v => vehicleNames[v.modelid] || `ID: ${v.modelid}`), datasets: [{ data: data.topVehicles.map(v => v.vehicleCount), backgroundColor: '#00FFFF' }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#D1D5DB' } }, x: { ticks: { color: '#D1D5DB' } } } } });
+            const vehicleNames = { 411: 'Infernus', 560: 'Sultan', 476: 'Bullet', 559: 'Slamvan', 494: 'Hotring', 541: 'Cheetah', 487: 'Maverick', 562: 'Elegy', 460: 'NRG-500', 522: 'FCR-900' };
+            const vehiclesCtx = document.getElementById('vehicles-chart').getContext('2d');
+            if(vehiclesChart) vehiclesChart.destroy();
+            vehiclesChart = new Chart(vehiclesCtx, { type: 'bar', data: { labels: data.topVehicles.map(v => vehicleNames[v.modelid] || `ID: ${v.modelid}`), datasets: [{ data: data.topVehicles.map(v => v.vehicleCount), backgroundColor: '#00FFFF' }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#D1D5DB' } }, x: { ticks: { color: '#D1D5DB' } } } } });
 
-                const wealthiestPlayersList = document.getElementById('wealthiest-players-list');
-                wealthiestPlayersList.innerHTML = '';
-                data.wealthiestPlayers.forEach((player, index) => { wealthiestPlayersList.innerHTML += `<div class="flex justify-between items-center text-sm"><div><span class="text-gray-400 mr-2">${index + 1}.</span><span class="online-player-name font-semibold" data-playername="${player.username}">${player.username}</span></div><span class="font-bold text-green-400">₦${parseInt(player.total_wealth).toLocaleString()}</span></div>`; });
-                
-                const topBusinessesList = document.getElementById('top-businesses-list');
-                topBusinessesList.innerHTML = '';
-                data.topBusinesses.forEach((biz, index) => { topBusinessesList.innerHTML += `<div class="flex justify-between items-center text-sm"><div><span class="text-gray-400 mr-2">${index + 1}.</span><span class="font-semibold">${biz.biz_desc}</span></div><span class="font-bold text-yellow-400">₦${biz.cash.toLocaleString()}</span></div>`; });
+            const wealthiestPlayersList = document.getElementById('wealthiest-players-list');
+            wealthiestPlayersList.innerHTML = '';
+            data.wealthiestPlayers.forEach((player, index) => { wealthiestPlayersList.innerHTML += `<div class="flex justify-between items-center text-sm"><div><span class="text-gray-400 mr-2">${index + 1}.</span><span class="online-player-name font-semibold" data-playername="${player.username}">${player.username}</span></div><span class="font-bold text-green-400">₦${parseInt(player.total_wealth).toLocaleString()}</span></div>`; });
+            
+            const topBusinessesList = document.getElementById('top-businesses-list');
+            topBusinessesList.innerHTML = '';
+            data.topBusinesses.forEach((biz, index) => { topBusinessesList.innerHTML += `<div class="flex justify-between items-center text-sm"><div><span class="text-gray-400 mr-2">${index + 1}.</span><span class="font-semibold">${biz.biz_desc}</span></div><span class="font-bold text-yellow-400">₦${biz.cash.toLocaleString()}</span></div>`; });
 
-                const factionTreasuriesList = document.getElementById('faction-treasuries-list');
-                factionTreasuriesList.innerHTML = '';
-                data.factionTreasuries.forEach((faction) => { factionTreasuriesList.innerHTML += `<div class="flex justify-between items-center text-sm"><span class="font-semibold">${faction.name}</span><span class="font-bold text-cyan-400">₦${faction.faction_treasury.toLocaleString()}</span></div>`; });
+            const factionTreasuriesList = document.getElementById('faction-treasuries-list');
+            factionTreasuriesList.innerHTML = '';
+            data.factionTreasuries.forEach((faction) => { factionTreasuriesList.innerHTML += `<div class="flex justify-between items-center text-sm"><span class="font-semibold">${faction.name}</span><span class="font-bold text-cyan-400">₦${faction.faction_treasury.toLocaleString()}</span></div>`; });
 
-                wealthiestPlayersList.addEventListener('click', (e) => {
-                    if (e.target && e.target.classList.contains('online-player-name')) { lookupPlayer(e.target.dataset.playername); }
-                });
+            wealthiestPlayersList.addEventListener('click', (e) => {
+                if (e.target && e.target.classList.contains('online-player-name')) { lookupPlayer(e.target.dataset.playername); }
+            });
 
-            } catch (error) { console.error("Failed to fetch economy stats:", error); }
-        };
+        } catch (error) { console.error("Failed to fetch economy stats:", error); }
+    };
+        
+        document.getElementById('gemini-explanation-btn').addEventListener('click', () => {
+            document.getElementById('gemini-explanation-text').textContent = geminiExplanation;
+            document.getElementById('gemini-explanation-modal').classList.remove('hidden');
+        });
+
+        document.getElementById('close-gemini-modal').addEventListener('click', () => {
+            document.getElementById('gemini-explanation-modal').classList.add('hidden');
+        });
 
         const lookupForm = document.getElementById('lookup-form');
         const lookupResultsContainer = document.getElementById('lookup-results');
@@ -505,9 +621,137 @@
                 if (data.propertyLogs && data.propertyLogs.length > 0) {
                     propertyLogsHtml = `<ul class="list-disc list-inside mt-2 space-y-1 text-gray-300 text-sm h-48 overflow-y-auto">${data.propertyLogs.map(log => `<li>${log.description}</li>`).join('')}</ul>`;
                 }
-                lookupResultsContainer.innerHTML = `<div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6"><h3 class="text-2xl font-bold text-white mb-6">Records for <span class="text-[var(--color-cyan-accent)]">${playerName}</span></h3><div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6"><div class="space-y-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Faction</p><p class="text-xl font-bold">${s.factionName} (Rank: ${s.factionrank})</p></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Level</p><p class="text-2xl font-bold">${s.level}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Hours Played</p><p class="text-2xl font-bold">${s.hours}</p></div></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Cash</p><p class="text-2xl font-bold text-green-400">₦${s.cash.toLocaleString()}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Bank</p><p class="text-2xl font-bold text-green-400">₦${s.bank.toLocaleString()}</p></div></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Fleeca Bank</p><p class="text-2xl font-bold text-cyan-400">₦${s.fleeca_bank.toLocaleString()}</p></div><div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Crimes</p><p class="text-2xl font-bold text-red-400">${s.crimes}</p></div></div></div><div class="space-y-6"><div><h4 class="text-xl font-bold text-white">Vehicles</h4>${vehiclesHtml}</div><div><h4 class="text-xl font-bold text-white">Property Logs</h4>${propertyLogsHtml}</div></div></div></div>`;
+                lookupResultsContainer.innerHTML = `<div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6">
+                    <h3 class="text-2xl font-bold text-white mb-6">Records for <span class="text-[var(--color-cyan-accent)]">${playerName}</span></h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
+                        <div class="space-y-4">
+                            <div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Faction</p><p class="text-xl font-bold">${s.factionName} (Rank: ${s.factionrank})</p></div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Level</p><p class="text-2xl font-bold">${s.level}</p></div>
+                                <div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Hours Played</p><p class="text-2xl font-bold">${s.hours}</p></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Cash</p><p class="text-2xl font-bold text-green-400">₦${s.cash.toLocaleString()}</p></div>
+                                <div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Bank</p><p class="text-2xl font-bold text-green-400">₦${s.bank.toLocaleString()}</p></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Fleeca Bank</p><p class="text-2xl font-bold text-cyan-400">₦${s.fleeca_bank.toLocaleString()}</p></div>
+                                <div class="bg-gray-800 p-4 rounded-lg"><p class="text-sm text-gray-400">Crimes</p><p class="text-2xl font-bold text-red-400">${s.crimes}</p></div>
+                            </div>
+                        </div>
+                        <div class="space-y-6">
+                            <div><h4 class="text-xl font-bold text-white">Vehicles</h4>${vehiclesHtml}</div>
+                            <div><h4 class="text-xl font-bold text-white">Property Logs</h4>${propertyLogsHtml}</div>
+                        </div>
+                    </div>
+                    <div class="mt-6 pt-6 border-t border-gray-700">
+                        <h4 class="text-xl font-bold text-white mb-4">Admin Actions</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <input type="number" id="money-amount" placeholder="Amount" class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none">
+                            </div>
+                            <div>
+                                <button id="add-money-btn" class="w-full bg-green-500 text-white px-6 py-3 rounded-md font-bold hover:bg-green-600">Add Money</button>
+                            </div>
+                            <div>
+                                <button id="deduct-money-btn" class="w-full bg-yellow-500 text-white px-6 py-3 rounded-md font-bold hover:bg-yellow-600">Deduct Money</button>
+                            </div>
+                            <div class="md:col-span-2">
+                                <input type="text" id="ban-reason" placeholder="Ban Reason" class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-[var(--color-cyan-accent)] focus:outline-none">
+                            </div>
+                            <div>
+                                <button id="ban-btn" class="w-full bg-red-500 text-white px-6 py-3 rounded-md font-bold hover:bg-red-600">Ban</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+
+                document.getElementById('add-money-btn').addEventListener('click', async () => {
+                    const amount = document.getElementById('money-amount').value;
+                    if (!amount) return alert('Please enter an amount.');
+                    try {
+                        await fetch(`${backendUrl}/api/player/${playerName}/add-money`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ amount: parseInt(amount) })
+                        });
+                        alert('Money added successfully!');
+                        lookupPlayer(playerName);
+                    } catch (error) {
+                        alert('Failed to add money.');
+                    }
+                });
+
+                document.getElementById('deduct-money-btn').addEventListener('click', async () => {
+                    const amount = document.getElementById('money-amount').value;
+                    if (!amount) return alert('Please enter an amount.');
+                    try {
+                        await fetch(`${backendUrl}/api/player/${playerName}/deduct-money`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ amount: parseInt(amount) })
+                        });
+                        alert('Money deducted successfully!');
+                        lookupPlayer(playerName);
+                    } catch (error) {
+                        alert('Failed to deduct money.');
+                    }
+                });
+
+                document.getElementById('ban-btn').addEventListener('click', async () => {
+                    const reason = document.getElementById('ban-reason').value;
+                    if (!reason) return alert('Please enter a reason for the ban.');
+                    try {
+                        await fetch(`${backendUrl}/api/player/${playerName}/ban`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reason })
+                        });
+                        alert('Player banned successfully!');
+                    } catch (error) {
+                        alert('Failed to ban player.');
+                    }
+                });
             } catch (error) { lookupResultsContainer.innerHTML = `<p class="text-center text-lg text-red-400">${error.message}</p>`; }
         });
+        
+        const fetchAllPlayers = async () => {
+            const tbody = document.getElementById('all-players-tbody');
+            try {
+                const [playersRes, duplicateIpsRes] = await Promise.all([
+                    fetch(`${backendUrl}/api/all-players-list`),
+                    fetch(`${backendUrl}/api/duplicate-ips`)
+                ]);
+                const players = await playersRes.json();
+                const duplicateIps = await duplicateIpsRes.json();
+                
+                tbody.innerHTML = '';
+                if (players.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-gray-400">No players found.</td></tr>';
+                    return;
+                }
+                players.forEach(player => {
+                    const row = document.createElement('tr');
+                    const isDuplicate = duplicateIps.includes(player.ip);
+                    row.className = `border-b border-gray-800 hover:bg-gray-800/50 cursor-pointer ${isDuplicate ? 'text-red-400' : ''}`;
+                    row.dataset.playername = player.username;
+                    row.innerHTML = `
+                        <td class="p-4">${player.username}</td>
+                        <td class="p-4">${player.level}</td>
+                        <td class="p-4">${player.hours}</td>
+                        <td class="p-4">${getFactionName(player.faction)}</td>
+                        <td class="p-4">${player.ip}</td>
+                    `;
+                    row.addEventListener('click', () => {
+                        lookupPlayer(player.username);
+                    });
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-red-400">Failed to load players.</td></tr>';
+            }
+        };
+
 
         const fetchEvents = async () => {
             const eventsList = document.getElementById('events-list');
@@ -649,15 +893,12 @@
         const raffleModal = document.getElementById('raffle-modal');
         const openRaffleBtn = document.getElementById('raffle-btn');
         const closeRaffleBtn = document.getElementById('close-raffle-modal');
-        const raffleNamesContainer = document.getElementById('raffle-names');
-        const winnerDisplay = document.getElementById('winner-display');
+        const raffleSlotMachine = document.getElementById('raffle-slot-machine');
         const raffleStatus = document.getElementById('raffle-status');
         let allPlayers = [];
 
         openRaffleBtn.addEventListener('click', async () => {
             raffleModal.classList.remove('hidden');
-            winnerDisplay.style.opacity = 0;
-            winnerDisplay.textContent = '';
             raffleStatus.textContent = 'Fetching players...';
             try {
                 const res = await fetch(`${backendUrl}/api/all-players`);
@@ -667,13 +908,12 @@
                     return;
                 }
                 raffleStatus.textContent = 'Ready to draw!';
-                raffleNamesContainer.innerHTML = allPlayers.map(name => `<div class="text-2xl p-2">${name}</div>`).join('');
                 startRaffle();
             } catch (e) {
                 raffleStatus.textContent = 'Could not load players.';
             }
         });
-
+        
         closeRaffleBtn.addEventListener('click', () => {
             raffleModal.classList.add('hidden');
         });
@@ -682,25 +922,46 @@
             if (allPlayers.length === 0) return;
             
             raffleStatus.textContent = 'Drawing...';
-            winnerDisplay.style.opacity = 0;
-        
-            // Spinning animation
-            let shuffleInterval = setInterval(() => {
-                allPlayers.sort(() => Math.random() - 0.5);
-                raffleNamesContainer.innerHTML = allPlayers.slice(0, 50).map(name => `<div class="text-2xl p-2">${name}</div>`).join('');
-            }, 100);
-
-            // Fetch the actual winner while the animation is running
-            const winnerRes = await fetch(`${backendUrl}/api/random-player`);
-            const winner = await winnerRes.json();
             
+            // Fetch the actual winner
+            const winnerRes = await fetch(`${backendUrl}/api/random-player`);
+            const winnerData = await winnerRes.json();
+            const winner = winnerData.username;
+            
+            raffleSlotMachine.innerHTML = '';
+            const reel = document.createElement('div');
+            reel.className = 'slot-reel';
+            const reelInner = document.createElement('div');
+            reelInner.className = 'slot-reel-inner';
+
+            const shuffledPlayers = [...allPlayers].sort(() => 0.5 - Math.random());
+            const displayPlayers = shuffledPlayers.slice(0, 30);
+            
+            if (!displayPlayers.includes(winner)) {
+                displayPlayers[Math.floor(Math.random() * displayPlayers.length)] = winner;
+            }
+
+            displayPlayers.forEach(player => {
+                const item = document.createElement('div');
+                item.className = 'slot-item';
+                item.textContent = player;
+                reelInner.appendChild(item);
+            });
+            
+            reel.appendChild(reelInner);
+            raffleSlotMachine.appendChild(reel);
+
             setTimeout(() => {
-                clearInterval(shuffleInterval);
-                raffleNamesContainer.innerHTML = `<div class="text-2xl p-2 text-[var(--color-green-accent)]">${winner.username}</div>`;
-                winnerDisplay.textContent = winner.username;
-                winnerDisplay.style.opacity = 1;
-                raffleStatus.textContent = 'We have a winner!';
-            }, 3000); 
+                const winnerIndex = displayPlayers.indexOf(winner);
+                const itemHeight = 100;
+                const offset = -winnerIndex * itemHeight;
+                reelInner.style.transform = `translateY(${offset}px)`;
+
+                setTimeout(() => {
+                    raffleStatus.textContent = `Winner: ${winner}`;
+                    reelInner.childNodes[winnerIndex].parentNode.classList.add('winner');
+                }, 5000);
+            }, 100);
         }
 
         const initialLoad = () => {
@@ -715,6 +976,7 @@
             fetchAndDisplayEconomyStats();
             fetchEvents();
             fetchEventLogs();
+            fetchAllPlayers();
             setInterval(fetchOnlinePlayers, 30000);
         };
         initialLoad();
