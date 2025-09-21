@@ -396,7 +396,7 @@ app.post('/api/gemini-analysis', async (req, res) => {
     const safeTotalPlayerHours = typeof totalPlayerHours === 'number' ? totalPlayerHours : 0;
 
     // Player activity modifier (more balanced)
-    const activityModifier = (safeTotalPlayerHours / 100000) * 0.1; // Reduced impact
+    const activityModifier = (safeTotalPlayerHours / 100000) * 0.2; // Reduced impact
     
     // A more stable prediction formula
     const prediction = (circulationChange * 100) + activityModifier;
