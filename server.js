@@ -190,6 +190,26 @@ app.get('/api/player/:name', async (req, res) => {
         res.status(500).json({ message: "An error occurred while fetching player data." });
     }
 });
+// New Teleport Endpoint
+app.post('/api/player/:name/teleport', async (req, res) => {
+    const playerName = req.params.name;
+    const { x, y, z } = { x: 546.7000, y: -1281.5160, z: 17.2482 }; // Hardcoded coordinates
+
+    if (!sampDbPool) {
+        return res.status(503).json({ message: "Game database is not connected." });
+    }
+
+    try {
+        await sampDbPool.query(
+            "UPDATE `users` SET `pos_x` = ?, `pos_y` = ?, `pos_z` = ? WHERE `username` = ?",
+            [x, y, z, playerName]
+        );
+        res.json({ message: 'Player teleported successfully!' });
+    } catch (error) {
+        console.error("MySQL Teleport Player Error:", error);
+        res.status(500).json({ message: "Failed to teleport player." });
+    }
+});
 
 app.get('/api/online-players', async (req, res) => {
     if (!sampDbPool) {
@@ -357,11 +377,11 @@ app.get('/api/economy-stats', async (req, res) => {
         const totalBusinessValue = results[13][0][0] || { totalBusinessValue: 0 };
         const totalHouseValue = results[14][0][0] || { totalHouseValue: 0 };
         const totalVehicleValue = results[15][0][0] || { totalVehicleValue: 0 };
-        
+
         const cashNum = parseInt(playerStats.totalPlayerCash) || 0;
         const bankNum = parseInt(playerStats.totalPlayerBank) || 0;
         const totalCirculation = cashNum + bankNum;
-        
+
         const serverAssetValue = totalCirculation +
                                   (parseInt(totalBusinessValue.totalBusinessValue) || 0) +
                                   (parseInt(totalHouseValue.totalHouseValue) || 0) +
@@ -421,7 +441,7 @@ app.post('/api/gemini-analysis', async (req, res) => {
 
     // --- Prediction Calculation (Weighted) ---
     const prediction = (circulationChange * 100) + (engagementScore * 100) + (activityLevel * 100);
-    
+
     const explanation = `
         This simulated prediction is based on several key server metrics:
         --- Recent Economic Trend: The total circulation changed by ${(circulationChange * 100).toFixed(2)}% in the last 24 hours. This is the primary driver of the prediction.
@@ -557,7 +577,7 @@ Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
                 console.error("Error running economy snapshot job:", err);
             }
         });
-        
+
         console.log("Discord announcement job scheduled to run every minute.");
         cron.schedule('* * * * *', async () => {
             try {
