@@ -385,6 +385,11 @@ app.post('/api/gemini-analysis', async (req, res) => {
 
     const latestCirculation = circulationHistory[circulationHistory.length - 1].total_circulation;
     const previousCirculation = circulationHistory[circulationHistory.length - 2].total_circulation;
+    
+    if (previousCirculation === 0) {
+        return res.json({ prediction: 0, explanation: "Cannot calculate prediction due to zero previous circulation." });
+    }
+
     const circulationChange = (latestCirculation - previousCirculation) / previousCirculation;
 
     // Player activity modifier (adjust these weights as needed)
@@ -402,7 +407,6 @@ app.post('/api/gemini-analysis', async (req, res) => {
 
     res.json({ prediction: prediction.toFixed(2), explanation });
 });
-
 
 app.get('/api/events', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
