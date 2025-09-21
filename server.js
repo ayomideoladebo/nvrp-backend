@@ -307,7 +307,7 @@ app.get('/api/economy-stats', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     try {
         const queries = [
-            sampDbPool.query("SELECT SUM(cash) AS totalPlayerCash, SUM(bank) AS totalPlayerBank FROM users"),
+            sampDbPool.query("SELECT SUM(cash) AS totalPlayerCash, SUM(bank) AS totalPlayerBank, SUM(hours) AS totalPlayerHours FROM users"),
             sampDbPool.query(`SELECT CASE WHEN (cash + bank) BETWEEN 0 AND 25000 THEN 'Newcomer (₦0 - ₦25k)' WHEN (cash + bank) BETWEEN 25001 AND 150000 THEN 'Working Class (₦25k - ₦150k)' WHEN (cash + bank) BETWEEN 150001 AND 750000 THEN 'Middle Class (₦150k - ₦750k)' ELSE 'Wealthy (₦750k+)' END AS wealthBracket, COUNT(*) AS playerCount FROM users GROUP BY wealthBracket ORDER BY MIN(cash + bank)`),
             sampDbPool.query("SELECT modelid, COUNT(*) AS vehicleCount FROM vehicles GROUP BY modelid ORDER BY vehicleCount DESC LIMIT 10"),
             sampDbPool.query("SELECT COUNT(*) as ownedBusinesses FROM businesses WHERE ownerid != 0"),
@@ -327,7 +327,7 @@ app.get('/api/economy-stats', async (req, res) => {
 
         const results = await Promise.all(queries.map(p => p.catch(e => [[]])));
 
-        const playerWealth = results[0][0][0] || { totalPlayerCash: 0, totalPlayerBank: 0 };
+        const playerWealth = results[0][0][0] || { totalPlayerCash: 0, totalPlayerBank: 0, totalPlayerHours: 0 };
         const wealthDistribution = results[1][0] || [];
         const topVehicles = results[2][0] || [];
         const ownedBusinessesCount = results[3][0][0] || { ownedBusinesses: 0 };
@@ -357,6 +357,7 @@ app.get('/api/economy-stats', async (req, res) => {
             totalCirculation,
             totalPlayerCash: cashNum,
             totalPlayerBank: bankNum,
+            totalPlayerHours: parseInt(playerWealth.totalPlayerHours) || 0,
             wealthDistribution, topVehicles,
             ownedBusinesses: ownedBusinessesCount.ownedBusinesses,
             totalBusinesses: totalBusinessesCount.totalBusinesses,
@@ -376,20 +377,30 @@ app.get('/api/economy-stats', async (req, res) => {
 });
 
 app.post('/api/gemini-analysis', async (req, res) => {
-    const { circulationHistory } = req.body;
-    // This is a simplified prediction model.
+    const { circulationHistory, totalPlayerHours } = req.body;
+
     if (circulationHistory.length < 2) {
         return res.json({ prediction: 0, explanation: "Not enough data for a prediction." });
     }
-    const changes = [];
-    for (let i = 1; i < circulationHistory.length; i++) {
-        const change = (circulationHistory[i].total_circulation - circulationHistory[i-1].total_circulation) / circulationHistory[i-1].total_circulation;
-        changes.push(change);
-    }
-    const averageChange = changes.reduce((a, b) => a + b, 0) / changes.length;
-    const prediction = (averageChange * 100).toFixed(2);
-    const explanation = `Based on the average daily change of ${prediction}% over the last ${circulationHistory.length} days, the total circulation is expected to change by this amount in the next 24 hours. This is a simulated prediction based on historical data.`;
-    res.json({ prediction, explanation });
+
+    const latestCirculation = circulationHistory[circulationHistory.length - 1].total_circulation;
+    const previousCirculation = circulationHistory[circulationHistory.length - 2].total_circulation;
+    const circulationChange = (latestCirculation - previousCirculation) / previousCirculation;
+
+    // Player activity modifier (adjust these weights as needed)
+    const activityModifier = (totalPlayerHours / 100000); // Normalize by a large number
+    
+    // A more balanced prediction formula
+    const prediction = (circulationChange + activityModifier) * 50;
+
+    const explanation = `
+        This prediction is based on a combination of recent economic trends and player activity. 
+        - The recent change in total circulation suggests a ${ (circulationChange * 100).toFixed(2) }% shift.
+        - Player activity, measured by total playing hours, is currently influencing the economy by a factor of ${activityModifier.toFixed(4)}.
+        - These factors combined lead to a simulated prediction of a ${prediction.toFixed(2)}% change in total circulation over the next 24 hours.
+    `;
+
+    res.json({ prediction: prediction.toFixed(2), explanation });
 });
 
 
