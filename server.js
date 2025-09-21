@@ -222,8 +222,8 @@ app.get('/api/player-locations', async (req, res) => {
         return res.status(503).json({ message: "Game database is not connected." });
     }
     try {
-        // Fetches all players and their online status
-        const [rows] = await sampDbPool.query("SELECT `username`, `pos_x`, `pos_y`, `is_online` FROM `users`");
+        // Now fetching faction ID along with other data
+        const [rows] = await sampDbPool.query("SELECT `username`, `pos_x`, `pos_y`, `is_online`, `faction` FROM `users`");
         res.json(rows);
     } catch (error) {
         console.error("MySQL Get Player Locations Error:", error);
