@@ -307,7 +307,7 @@ app.get('/api/economy-stats', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
     try {
         const queries = [
-            sampDbPool.query("SELECT SUM(cash) AS totalPlayerCash, SUM(bank) AS totalPlayerBank, SUM(hours) AS totalPlayerHours FROM users"),
+            sampDbPool.query("SELECT SUM(cash) AS totalPlayerCash, SUM(bank) AS totalPlayerBank, SUM(hours) AS totalPlayerHours, MIN(hours) AS minPlayerHours, MAX(hours) AS maxPlayerHours, AVG(hours) AS avgPlayerHours, COUNT(CASE WHEN is_online = 1 THEN 1 END) AS onlinePlayers FROM users"),
             sampDbPool.query(`SELECT CASE WHEN (cash + bank) BETWEEN 0 AND 25000 THEN 'Newcomer (₦0 - ₦25k)' WHEN (cash + bank) BETWEEN 25001 AND 150000 THEN 'Working Class (₦25k - ₦150k)' WHEN (cash + bank) BETWEEN 150001 AND 750000 THEN 'Middle Class (₦150k - ₦750k)' ELSE 'Wealthy (₦750k+)' END AS wealthBracket, COUNT(*) AS playerCount FROM users GROUP BY wealthBracket ORDER BY MIN(cash + bank)`),
             sampDbPool.query("SELECT modelid, COUNT(*) AS vehicleCount FROM vehicles GROUP BY modelid ORDER BY vehicleCount DESC LIMIT 10"),
             sampDbPool.query("SELECT COUNT(*) as ownedBusinesses FROM businesses WHERE ownerid != 0"),
@@ -327,7 +327,7 @@ app.get('/api/economy-stats', async (req, res) => {
 
         const results = await Promise.all(queries.map(p => p.catch(e => [[]])));
 
-        const playerWealth = results[0][0][0] || { totalPlayerCash: 0, totalPlayerBank: 0, totalPlayerHours: 0 };
+        const playerStats = results[0][0][0] || { totalPlayerCash: 0, totalPlayerBank: 0, totalPlayerHours: 0, minPlayerHours: 0, maxPlayerHours: 0, avgPlayerHours: 0, onlinePlayers: 0 };
         const wealthDistribution = results[1][0] || [];
         const topVehicles = results[2][0] || [];
         const ownedBusinessesCount = results[3][0][0] || { ownedBusinesses: 0 };
@@ -344,8 +344,8 @@ app.get('/api/economy-stats', async (req, res) => {
         const totalHouseValue = results[14][0][0] || { totalHouseValue: 0 };
         const totalVehicleValue = results[15][0][0] || { totalVehicleValue: 0 };
         
-        const cashNum = parseInt(playerWealth.totalPlayerCash) || 0;
-        const bankNum = parseInt(playerWealth.totalPlayerBank) || 0;
+        const cashNum = parseInt(playerStats.totalPlayerCash) || 0;
+        const bankNum = parseInt(playerStats.totalPlayerBank) || 0;
         const totalCirculation = cashNum + bankNum;
         
         const serverAssetValue = totalCirculation +
@@ -357,7 +357,13 @@ app.get('/api/economy-stats', async (req, res) => {
             totalCirculation,
             totalPlayerCash: cashNum,
             totalPlayerBank: bankNum,
-            totalPlayerHours: parseInt(playerWealth.totalPlayerHours) || 0,
+            playerStats: {
+                totalHours: parseInt(playerStats.totalPlayerHours) || 0,
+                minHours: parseInt(playerStats.minPlayerHours) || 0,
+                maxHours: parseInt(playerStats.maxPlayerHours) || 0,
+                avgHours: parseFloat(playerStats.avgPlayerHours).toFixed(2) || 0,
+                online: parseInt(playerStats.onlinePlayers) || 0
+            },
             wealthDistribution, topVehicles,
             ownedBusinesses: ownedBusinessesCount.ownedBusinesses,
             totalBusinesses: totalBusinessesCount.totalBusinesses,
@@ -377,35 +383,38 @@ app.get('/api/economy-stats', async (req, res) => {
 });
 
 app.post('/api/gemini-analysis', async (req, res) => {
-    const { circulationHistory, totalPlayerHours } = req.body;
+    const { circulationHistory, playerStats } = req.body;
 
     if (!circulationHistory || circulationHistory.length < 2) {
         return res.json({ prediction: 0, explanation: "Not enough data for a prediction." });
     }
 
+    // --- Factors ---
+    // 1. Recent Circulation Trend
     const latestCirculation = circulationHistory[circulationHistory.length - 1].total_circulation;
     const previousCirculation = circulationHistory[circulationHistory.length - 2].total_circulation;
-    
     if (previousCirculation === 0) {
         return res.json({ prediction: 0, explanation: "Cannot calculate prediction due to zero previous circulation." });
     }
-
     const circulationChange = (latestCirculation - previousCirculation) / previousCirculation;
 
-    // Ensure totalPlayerHours is a valid number
-    const safeTotalPlayerHours = typeof totalPlayerHours === 'number' ? totalPlayerHours : 0;
+    // 2. Player Engagement Score
+    const engagementRatio = (playerStats.avgHours / (playerStats.maxHours || 1)); // Avoid division by zero
+    const engagementScore = (engagementRatio - 0.5) * 0.1; // Normalize: high avg hours -> positive, low -> negative
 
-    // Player activity modifier (more balanced)
-    const activityModifier = (safeTotalPlayerHours / 100000) * 0.2; // Reduced impact
+    // 3. Current Activity Level
+    const activityLevel = (playerStats.online / 100) * 0.05; // 0.05% boost per 100 online players
+
+    // --- Prediction Calculation (Weighted) ---
+    const prediction = (circulationChange * 100) + (engagementScore * 100) + (activityLevel * 100);
     
-    // A more stable prediction formula
-    const prediction = (circulationChange * 100) + activityModifier;
-
     const explanation = `
-        This prediction is based on a combination of recent economic trends and player activity. 
-        - The recent 24-hour change in total circulation suggests a ${ (circulationChange * 100).toFixed(2) }% shift.
-        - Player activity, measured by total playing hours (${safeTotalPlayerHours.toLocaleString()} hours), is currently influencing the economy by a factor of ${activityModifier.toFixed(4)}.
-        - These factors combined lead to a simulated prediction of a ${prediction.toFixed(2)}% change in total circulation over the next 24 hours.
+        This simulated prediction is based on several key server metrics:
+        - **Recent Economic Trend:** The total circulation changed by ${(circulationChange * 100).toFixed(2)}% in the last 24 hours. This is the primary driver of the prediction.
+        - **Player Engagement:** The average player has ${playerStats.avgHours} hours, compared to the most active player with ${playerStats.maxHours} hours. This high engagement ratio contributes a ${ (engagementScore * 100).toFixed(2) }% adjustment to the prediction.
+        - **Current Player Activity:** With ${playerStats.online} players currently online, there is an activity-based adjustment of ${ (activityLevel * 100).toFixed(2) }%.
+        
+        Combining these factors results in a simulated prediction of a ${prediction.toFixed(2)}% change in total circulation over the next 24 hours.
     `;
 
     res.json({ prediction: prediction.toFixed(2), explanation });
