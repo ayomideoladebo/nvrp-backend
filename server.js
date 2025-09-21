@@ -426,7 +426,7 @@ app.post('/api/gemini-analysis', async (req, res) => {
         This simulated prediction is based on several key server metrics:
         --- Recent Economic Trend: The total circulation changed by ${(circulationChange * 100).toFixed(2)}% in the last 24 hours. This is the primary driver of the prediction.
         ---Player Engagement: The average player has ${playerStats.avgHours} hours, compared to the most active player with ${playerStats.maxHours} hours. This high engagement ratio contributes a ${ (engagementScore * 100).toFixed(2) }% adjustment to the prediction.
-        --- Current Player Activity: With ${playerStats.online} players currently online, there is an activity-based adjustment of ${ (activityLevel * 100).toFixed(2) }%.
+        --- Current Player Activity: With ${playerStats.online} players currently active, there is an activity-based adjustment of ${ (activityLevel * 100).toFixed(2) }%.
 
         Combining these factors results in a simulated prediction of a ${prediction.toFixed(2)}% change in total circulation over the next 24 hours.
     `;
