@@ -388,7 +388,7 @@ app.post('/api/gemini-analysis', async (req, res) => {
     }
     const averageChange = changes.reduce((a, b) => a + b, 0) / changes.length;
     const prediction = (averageChange * 100).toFixed(2);
-    const explanation = `Based on the average change in total circulation over the last ${circulationHistory.length} days, a change of ${prediction}% is expected in the next 24 hours. This is a simulated prediction based on historical data and does not use a live AI model.`;
+    const explanation = `Based on the average daily change of ${prediction}% over the last ${circulationHistory.length} days, the total circulation is expected to change by this amount in the next 24 hours. This is a simulated prediction based on historical data.`;
     res.json({ prediction, explanation });
 });
 
