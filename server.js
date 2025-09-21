@@ -217,6 +217,19 @@ app.get('/api/all-players', async (req, res) => {
     }
 });
 
+app.get('/api/player-locations', async (req, res) => {
+    if (!sampDbPool) {
+        return res.status(503).json({ message: "Game database is not connected." });
+    }
+    try {
+        const [rows] = await sampDbPool.query("SELECT `username`, `pos_x`, `pos_y` FROM `users` WHERE `is_online` = 1");
+        res.json(rows);
+    } catch (error) {
+        console.error("MySQL Get Player Locations Error:", error);
+        res.status(500).json({ message: "Failed to fetch player locations." });
+    }
+});
+
 // New endpoint for player list
 app.get('/api/all-players-list', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
