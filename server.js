@@ -379,7 +379,7 @@ app.get('/api/economy-stats', async (req, res) => {
 app.post('/api/gemini-analysis', async (req, res) => {
     const { circulationHistory, totalPlayerHours } = req.body;
 
-    if (circulationHistory.length < 2) {
+    if (!circulationHistory || circulationHistory.length < 2) {
         return res.json({ prediction: 0, explanation: "Not enough data for a prediction." });
     }
 
@@ -392,16 +392,19 @@ app.post('/api/gemini-analysis', async (req, res) => {
 
     const circulationChange = (latestCirculation - previousCirculation) / previousCirculation;
 
-    // Player activity modifier (adjust these weights as needed)
-    const activityModifier = (totalPlayerHours / 100000); // Normalize by a large number
+    // Ensure totalPlayerHours is a valid number
+    const safeTotalPlayerHours = typeof totalPlayerHours === 'number' ? totalPlayerHours : 0;
+
+    // Player activity modifier (more balanced)
+    const activityModifier = (safeTotalPlayerHours / 100000) * 0.1; // Reduced impact
     
-    // A more balanced prediction formula
-    const prediction = (circulationChange + activityModifier) * 50;
+    // A more stable prediction formula
+    const prediction = (circulationChange * 100) + activityModifier;
 
     const explanation = `
         This prediction is based on a combination of recent economic trends and player activity. 
-        - The recent change in total circulation suggests a ${ (circulationChange * 100).toFixed(2) }% shift.
-        - Player activity, measured by total playing hours, is currently influencing the economy by a factor of ${activityModifier.toFixed(4)}.
+        - The recent 24-hour change in total circulation suggests a ${ (circulationChange * 100).toFixed(2) }% shift.
+        - Player activity, measured by total playing hours (${safeTotalPlayerHours.toLocaleString()} hours), is currently influencing the economy by a factor of ${activityModifier.toFixed(4)}.
         - These factors combined lead to a simulated prediction of a ${prediction.toFixed(2)}% change in total circulation over the next 24 hours.
     `;
 
