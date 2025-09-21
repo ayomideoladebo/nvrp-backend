@@ -381,10 +381,10 @@ app.post('/api/gemini-analysis', async (req, res) => {
     const { circulationHistory, serverAssetValue } = req.body;
 
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-preview-0514" });
 
     const prompt = `
-        You are an expert financial analyst for a virtual game server gta SAMP to be precised. Your analysis is not a simulation; it is a real-time prediction based on live data.
+        You are an expert financial analyst for a virtual game server. Your analysis is not a simulation; it is a real-time prediction based on live data from our game server.
         Analyze the following economic data and provide a prediction for the total circulation in the next 24 hours.
         - Current Total Circulation: ₦${circulationHistory[circulationHistory.length - 1].total_circulation.toLocaleString()}
         - Total Server Asset Value: ₦${serverAssetValue.toLocaleString()}
