@@ -23,14 +23,6 @@ console.log(`Port: ${rconOptions.port} (Type: ${typeof rconOptions.port})`);
 console.log(`Password is set: ${!!rconOptions.password && rconOptions.password !== '10903f2478b10a37'}`);
 console.log('--------------------');
 
-// Validate the options before attempting to create a connection
-if (!rconOptions.host || typeof rconOptions.host !== 'string') {
-    throw new Error('SAMP_HOST is not defined or is not a string. Deployment cannot continue.');
-}
-if (!rconOptions.password || rconOptions.password === '10903f2478b10a37') {
-    throw new Error('RCON_PASSWORD is not defined. Please set it as an environment variable in Render.');
-}
-
 // ** THE FIX IS HERE: **
 // We now pass the options as separate arguments, as the library's constructor expects.
 const rcon = new Rcon(rconOptions.host, rconOptions.port, rconOptions.password);
