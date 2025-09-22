@@ -414,64 +414,63 @@ app.post('/api/gemini-analysis', async (req, res) => {
         return res.json({ prediction: 0, explanation: "Not enough data for a prediction." });
     }
 
+    // --- Enhanced Factors ---
+    // 1. Recent Circulation Trend (Weight: 40%)
     const latestCirculation = circulationHistory[circulationHistory.length - 1].total_circulation;
     const previousCirculation = circulationHistory[circulationHistory.length - 2].total_circulation;
-
     if (previousCirculation === 0) {
         return res.json({ prediction: 0, explanation: "Cannot calculate prediction due to zero previous circulation." });
     }
-
     const circulationChange = (latestCirculation - previousCirculation) / previousCirculation;
-    const circulationImpact = circulationChange * 100 * 0.4;
 
+    // 2. Player Engagement Score (Weight: 20%)
     const engagementRatio = (playerStats.avgHours / (playerStats.maxHours || 1));
     const engagementScore = (engagementRatio - 0.5) * 0.1;
-    const engagementImpact = engagementScore * 100 * 0.2;
 
+    // 3. Current Activity Level (Weight: 15%)
     const activityLevel = (playerStats.online / 100) * 0.05;
-    const activityImpact = activityLevel * 100 * 0.15;
 
+    // 4. Job Market Health (Weight: 15%)
     const [jobLogs] = await sampDbPool.query("SELECT description, created_at FROM log_jobs WHERE created_at >= NOW() - INTERVAL 24 HOUR");
     const recentPayouts = jobLogs.reduce((sum, log) => {
         const match = log.description.match(/got paid (\d+)/);
         return sum + (match ? parseInt(match[1], 10) : 0);
     }, 0);
-    const jobMarketFactor = (recentPayouts / 1000000) * 0.02;
-    const jobMarketImpact = jobMarketFactor * 100 * 0.15;
+    const jobMarketFactor = (recentPayouts / 1000000) * 0.02; // 2% boost for every ₦1,000,000 in payouts
 
+    // 5. Player Acquisition Rate (Weight: 5%)
     const newPlayersToday = await db.collection('waitlist').countDocuments({ date: { $gte: new Date(new Date() - 24 * 60 * 60 * 1000) } });
-    const acquisitionFactor = (newPlayersToday / 50) * 0.01;
-    const acquisitionImpact = acquisitionFactor * 100 * 0.05;
+    const acquisitionFactor = (newPlayersToday / 50) * 0.01; // 1% boost for every 50 new players
 
+    // 6. Donation Velocity (Weight: 5%)
     const recentDonations = await db.collection('donations').find({ date: { $gte: new Date(new Date() - 24 * 60 * 60 * 1000) } }).toArray();
     const totalDonationAmount = recentDonations.reduce((sum, donation) => sum + parseInt(donation.price.replace(/[^0-9]/g, ''), 10), 0);
-    const donationFactor = (totalDonationAmount / 50000) * 0.01;
-    const donationImpact = donationFactor * 100 * 0.05;
+    const donationFactor = (totalDonationAmount / 50000) * 0.01; // 1% boost for every ₦50,000 in donations
 
-    const prediction = circulationImpact + engagementImpact + activityImpact + jobMarketImpact + acquisitionImpact + donationImpact;
+    // --- Prediction Calculation (Weighted) ---
+    const prediction = (circulationChange * 100 * 0.4) + 
+                       (engagementScore * 100 * 0.2) + 
+                       (activityLevel * 100 * 0.15) +
+                       (jobMarketFactor * 100 * 0.15) +
+                       (acquisitionFactor * 100 * 0.05) +
+                       (donationFactor * 100 * 0.05);
     
     const explanation = `
-**Forecast Breakdown: ${prediction.toFixed(2)}%**
-
-This prediction is based on the following weighted factors:
-
-* **Economic Trend (40% weight):** Impact of **${circulationImpact.toFixed(2)}%**
-    * *Details:* The total money in circulation changed by ${(circulationChange * 100).toFixed(2)}% in the last 24 hours.
-
-* **Player Engagement (20% weight):** Impact of **${engagementImpact.toFixed(2)}%**
-    * *Details:* The average player has ${playerStats.avgHours} hours, indicating a dedicated player base.
-
-* **Player Activity (15% weight):** Impact of **${activityImpact.toFixed(2)}%**
-    * *Details:* Based on ${playerStats.online} players currently online.
-
-* **Job Market (15% weight):** Impact of **+${jobMarketImpact.toFixed(2)}%**
-    * *Details:* ₦${recentPayouts.toLocaleString()} was earned by players from jobs in the last 24 hours.
-
-* **Server Growth (5% weight):** Impact of **+${acquisitionImpact.toFixed(2)}%**
-    * *Details:* ${newPlayersToday} new players have applied in the last 24 hours.
-
-* **Community Investment (5% weight):** Impact of **+${donationImpact.toFixed(2)}%**
-    * *Details:* Players have donated ₦${totalDonationAmount.toLocaleString()} in the last 24 hours, showing strong community support.
+        This simulated prediction is based on a weighted analysis of key server metrics:
+        ---
+        **Economic Trend (40%):** The total money in circulation changed by ${(circulationChange * 100).toFixed(2)}% in the last 24 hours.
+        ---
+        **Player Engagement (20%):** The average player has ${playerStats.avgHours} hours logged, indicating a dedicated player base. This contributes a ${(engagementScore * 100).toFixed(2)}% adjustment.
+        ---
+        **Player Activity (15%):** With ${playerStats.online} players currently active, the server's immediate health adjusts the prediction by ${(activityLevel * 100).toFixed(2)}% adjustment.
+        ---
+        **Job Market (15%):** A total of ₦${recentPayouts.toLocaleString()} was paid out from jobs in the last 24 hours, adding a ${(jobMarketFactor * 100).toFixed(2)}% boost.
+        ---
+        **Growth (5%):** ${newPlayersToday} new players have applied in the last 24 hours, resulting in a ${(acquisitionFactor * 100).toFixed(2)}% adjustment.
+        ---
+        **Community Investment (5%):** Recent donations totaling ₦${totalDonationAmount.toLocaleString()} provide a ${(donationFactor * 100).toFixed(2)}% indicator of positive sentiment.
+        ---
+        Combining these factors results in a simulated prediction of a ${prediction.toFixed(2)}% change in total circulation over the next 24 hours.
     `;
 
     res.json({ prediction: prediction.toFixed(2), explanation });
