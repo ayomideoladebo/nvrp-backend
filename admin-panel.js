@@ -10,25 +10,24 @@ app.use(cors());
 app.use(express.json());
 
 // --- RCON Connection Details ---
+// All values are hardcoded as requested.
 const rconOptions = {
     host: '217.182.175.212',
-    port: 28071, // Your server's port
-    password: '10903f2478b10a37' // IMPORTANT: Replace with your actual RCON password
+    port: 28071, // Your server's RCON port
+    password: '10903f2478b10a37'
 };
 
 // Log the options to ensure they are correct on Render's side
 console.log('--- RCON Options ---');
 console.log(`Host: ${rconOptions.host} (Type: ${typeof rconOptions.host})`);
 console.log(`Port: ${rconOptions.port} (Type: ${typeof rconOptions.port})`);
-console.log(`Password is set: ${!!rconOptions.password && rconOptions.password !== '10903f2478b10a37'}`);
 console.log('--------------------');
 
-// ** THE FIX IS HERE: **
-// We now pass the options as separate arguments, as the library's constructor expects.
+// Pass the options as separate arguments, as the library's constructor expects.
 const rcon = new Rcon(rconOptions.host, rconOptions.port, rconOptions.password);
 
 
-// Endpoint to get the player list
+// Endpoint to get the player list in a structured format
 app.get('/api/rcon/players', async (req, res) => {
     try {
         const players = await rcon.getPlayers();
@@ -39,7 +38,7 @@ app.get('/api/rcon/players', async (req, res) => {
     }
 });
 
-// Generic endpoint for other commands
+// Generic endpoint for sending any other RCON command
 app.post('/api/rcon/command', async (req, res) => {
     const { command } = req.body;
     if (!command) {
