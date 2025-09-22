@@ -11,9 +11,9 @@ app.use(express.json());
 
 // --- RCON Connection Details ---
 const rconOptions = {
-    host: process.env.SAMP_HOST || '217.182.175.212',
-    port: parseInt(process.env.SAMP_PORT || '28071'),
-    password: process.env.RCON_PASSWORD || '10903f2478b10a37' // !!! IMPORTANT: Set RCON_PASSWORD as an environment variable on Render !!!
+    host: '217.182.175.212',
+    port: 28071, // Your server's port
+    password: '10903f2478b10a37' // IMPORTANT: Replace with your actual RCON password
 };
 
 // Log the options to ensure they are correct on Render's side
