@@ -462,7 +462,7 @@ app.post('/api/gemini-analysis', async (req, res) => {
         ---
         **Economic Trend (40%):** The total money in circulation changed by ${(circulationChange * 100).toFixed(2)}% in the last 24 hours.
         ---
-        **Player Engagement (20%):** The average player has **${playerStats.avgHours} hours** logged, indicating a dedicated player base. This contributes a ${(engagementScore * 100).toFixed(2)}% adjustment.
+        **Player Engagement (20%):** The average player has ${playerStats.avgHours} hours logged, indicating a dedicated player base. This contributes a ${(engagementScore * 100).toFixed(2)}% adjustment.
         ---
         **Player Activity (15%):** With ${playerStats.online} players currently active, the server's immediate health adjusts the prediction by ${(activityLevel * 100).toFixed(2)}% adjustment.
         ---
