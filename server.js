@@ -377,11 +377,11 @@ app.get('/api/economy-stats', async (req, res) => {
         const totalBusinessValue = results[13][0][0] || { totalBusinessValue: 0 };
         const totalHouseValue = results[14][0][0] || { totalHouseValue: 0 };
         const totalVehicleValue = results[15][0][0] || { totalVehicleValue: 0 };
-
+        
         const cashNum = parseInt(playerStats.totalPlayerCash) || 0;
         const bankNum = parseInt(playerStats.totalPlayerBank) || 0;
         const totalCirculation = cashNum + bankNum;
-
+        
         const serverAssetValue = totalCirculation +
                                   (parseInt(totalBusinessValue.totalBusinessValue) || 0) +
                                   (parseInt(totalHouseValue.totalHouseValue) || 0) +
@@ -441,7 +441,7 @@ app.post('/api/gemini-analysis', async (req, res) => {
 
     // --- Prediction Calculation (Weighted) ---
     const prediction = (circulationChange * 100) + (engagementScore * 100) + (activityLevel * 100);
-
+    
     const explanation = `
         This simulated prediction is based on several key server metrics:
         --- Recent Economic Trend: The total circulation changed by ${(circulationChange * 100).toFixed(2)}% in the last 24 hours. This is the primary driver of the prediction.
@@ -549,7 +549,80 @@ app.post('/api/quick-announcement', async (req, res) => {
     sendToDiscord(EVENTS_WEBHOOK_URL, embed);
     res.status(200).json({ message: 'Announcement sent!' });
 });
+// --- NEW JOB LOGS ENDPOINTS ---
 
+app.get('/api/job-logs', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+
+    const page = parseInt(req.query.page) || 1;
+    const date = req.query.date;
+    const limit = 50;
+    const offset = (page - 1) * limit;
+
+    try {
+        let whereClause = '';
+        let queryParams = [limit, offset];
+        let countQueryParams = [];
+
+        if (date) {
+            whereClause = "WHERE DATE(created_at) = ?";
+            queryParams = [date, limit, offset];
+            countQueryParams = [date];
+        }
+
+        const [logs] = await sampDbPool.query(`SELECT description, created_at FROM log_job ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`, queryParams);
+        const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM log_job ${whereClause}`, countQueryParams);
+        
+        let totalPayout = 0;
+        if(date){
+            const [payoutRows] = await sampDbPool.query(`SELECT description FROM log_job ${whereClause}`, countQueryParams);
+            totalPayout = payoutRows.reduce((sum, row) => {
+                const match = row.description.match(/got paid (\d+)/);
+                return sum + (match ? parseInt(match[1], 10) : 0);
+            }, 0);
+        }
+
+        res.json({
+            logs,
+            totalPayout,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page
+        });
+    } catch (error) {
+        console.error(`MySQL Get Job Logs Error:`, error);
+        res.status(500).json({ message: `Failed to fetch job logs.` });
+    }
+});
+
+
+app.get('/api/player-job-logs/:name', async (req, res) => {
+    const playerName = req.params.name;
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+
+    try {
+        const [logs] = await sampDbPool.query("SELECT description, created_at FROM log_job WHERE description LIKE ? ORDER BY created_at DESC", [`%${playerName}%`]);
+        res.json(logs);
+    } catch (error) {
+        console.error("MySQL Get Player Job Logs Error:", error);
+        res.status(500).json({ message: "Failed to fetch player job logs." });
+    }
+});
+
+app.get('/api/job-logs/payout-total', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+
+    try {
+        const [rows] = await sampDbPool.query("SELECT description FROM log_job");
+        const totalPayout = rows.reduce((sum, row) => {
+            const match = row.description.match(/got paid (\d+)/);
+            return sum + (match ? parseInt(match[1], 10) : 0);
+        }, 0);
+        res.json({ totalPayout });
+    } catch (error) {
+        console.error("MySQL Get Total Payout Error:", error);
+        res.status(500).json({ message: "Failed to fetch total payout." });
+    }
+});
 
 // --- SERVER AND CRON JOB START ---
 Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
@@ -577,7 +650,7 @@ Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
                 console.error("Error running economy snapshot job:", err);
             }
         });
-
+        
         console.log("Discord announcement job scheduled to run every minute.");
         cron.schedule('* * * * *', async () => {
             try {
