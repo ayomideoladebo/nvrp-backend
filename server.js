@@ -606,7 +606,7 @@ app.get('/api/job-payouts', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
         const [rows] = await sampDbPool.query("SELECT description FROM log_jobs");
-        const jobs = ["MINING", "MEAT CHOPPING", "PACKAGING", "GARBAGE", "LUMBER JACK", "DELIVERY", "COURIER", "FORKLIFTING", "FOODPANDA", "FARMING"];
+        const jobs = ["MINING", "MEAT CHOPPING", "PACKAGING", "GARBAGE", "LUMBER JACK", "DELIVERY", "COURIER", "FOLKLIFTING", "FOODPANDA", "FARMING"];
         const payouts = {};
 
         jobs.forEach(job => {
