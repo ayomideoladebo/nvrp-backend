@@ -567,7 +567,7 @@ app.get('/api/job-logs', async (req, res) => {
         if (date) {
             whereClause = "WHERE DATE(created_at) = ?";
             queryParams = [date, limit, offset];
-            countQueryParams = [date];
+            countQueryParams = [datewe];
         }
 
         const [logs] = await sampDbPool.query(`SELECT description, created_at FROM log_jobs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`, queryParams);
