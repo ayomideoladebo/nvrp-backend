@@ -570,12 +570,12 @@ app.get('/api/job-logs', async (req, res) => {
             countQueryParams = [date];
         }
 
-        const [logs] = await sampDbPool.query(`SELECT description, created_at FROM log_job ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`, queryParams);
-        const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM log_job ${whereClause}`, countQueryParams);
+        const [logs] = await sampDbPool.query(`SELECT description, created_at FROM log_jobs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`, queryParams);
+        const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM log_jobs ${whereClause}`, countQueryParams);
         
         let totalPayout = 0;
         if(date){
-            const [payoutRows] = await sampDbPool.query(`SELECT description FROM log_job ${whereClause}`, countQueryParams);
+            const [payoutRows] = await sampDbPool.query(`SELECT description FROM log_jobs ${whereClause}`, countQueryParams);
             totalPayout = payoutRows.reduce((sum, row) => {
                 const match = row.description.match(/got paid (\d+)/);
                 return sum + (match ? parseInt(match[1], 10) : 0);
@@ -600,7 +600,7 @@ app.get('/api/player-job-logs/:name', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
 
     try {
-        const [logs] = await sampDbPool.query("SELECT description, created_at FROM log_job WHERE description LIKE ? ORDER BY created_at DESC", [`%${playerName}%`]);
+        const [logs] = await sampDbPool.query("SELECT description, created_at FROM log_jobs WHERE description LIKE ? ORDER BY created_at DESC", [`%${playerName}%`]);
         res.json(logs);
     } catch (error) {
         console.error("MySQL Get Player Job Logs Error:", error);
@@ -612,7 +612,7 @@ app.get('/api/job-logs/payout-total', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
 
     try {
-        const [rows] = await sampDbPool.query("SELECT description FROM log_job");
+        const [rows] = await sampDbPool.query("SELECT description FROM log_jobs");
         const totalPayout = rows.reduce((sum, row) => {
             const match = row.description.match(/got paid (\d+)/);
             return sum + (match ? parseInt(match[1], 10) : 0);
