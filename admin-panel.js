@@ -1,90 +1,115 @@
 const express = require('express');
 const cors = require('cors');
-const Rcon = require('samp-rcon');
+const dgram = require('dgram'); // Node.js's built-in module for UDP
 
 const app = express();
-const PORT = process.env.PORT || 3001; 
+const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
 
 // --- RCON Connection Details ---
-const rconOptions = {
+const RCON_CONFIG = {
     host: '217.182.175.212',
     port: 28071,
     password: '10903f2478b10a37'
 };
 
-console.log('--- RCON Service Starting ---');
-console.log(`Attempting to connect to RCON at ${rconOptions.host}:${rconOptions.port}`);
+/**
+ * Sends a command to the SA-MP server using the RCON protocol.
+ * This is a custom implementation and does not require external libraries.
+ * @param {string} command The RCON command to send.
+ * @returns {Promise<string>} The server's response.
+ */
+function sendRcon(command) {
+    return new Promise((resolve, reject) => {
+        const client = dgram.createSocket('udp4');
+        const password = RCON_CONFIG.password;
+        
+        // RCON Packet Structure:
+        // 4 bytes: 'SAMP'
+        // 4 bytes: Server IP octets
+        // 2 bytes: Server Port
+        // 1 byte:  Opcode ('x' for rcon)
+        // 2 bytes: Password length
+        // N bytes: Password
+        // 2 bytes: Command length
+        // N bytes: Command
+        const packetHeader = Buffer.alloc(11);
+        packetHeader.write('SAMP');
+        const ipParts = RCON_CONFIG.host.split('.').map(Number);
+        packetHeader[4] = ipParts[0];
+        packetHeader[5] = ipParts[1];
+        packetHeader[6] = ipParts[2];
+        packetHeader[7] = ipParts[3];
+        packetHeader.writeUInt16LE(RCON_CONFIG.port, 8);
+        packetHeader[10] = 'x'.charCodeAt(0);
 
-let rcon;
-let rconError = null;
+        const passBuffer = Buffer.from(password);
+        const passLenBuffer = Buffer.alloc(2);
+        passLenBuffer.writeUInt16LE(password.length, 0);
 
-try {
-    rcon = new Rcon(rconOptions.host, rconOptions.port, rconOptions.password);
-    console.log('RCON object initialized successfully.');
+        const cmdBuffer = Buffer.from(command);
+        const cmdLenBuffer = Buffer.alloc(2);
+        cmdLenBuffer.writeUInt16LE(command.length, 0);
 
-    // Add event listeners for more insight
-    rcon.on('ready', () => {
-        console.log('RCON connection SUCCESS: Connection is ready!');
+        const packet = Buffer.concat([packetHeader, passLenBuffer, passBuffer, cmdLenBuffer, cmdBuffer]);
+        
+        // Handle server response
+        client.on('message', (msg) => {
+            client.close();
+            // The actual response starts at offset 11
+            resolve(msg.toString('ascii', 11));
+        });
+
+        // Send the packet
+        client.send(packet, 0, packet.length, RCON_CONFIG.port, RCON_CONFIG.host, (err) => {
+            if (err) {
+                client.close();
+                reject(err);
+            }
+        });
+
+        // Timeout if no response after 3 seconds
+        setTimeout(() => {
+            try {
+                client.close();
+            } finally {
+                reject(new Error('RCON request timed out. (Check firewall/port)'));
+            }
+        }, 3000);
     });
-
-    rcon.on('error', (err) => {
-        console.error('RCON connection RUNTIME ERROR:', err);
-        rconError = err; // Store the error
-    });
-
-} catch (error) {
-    console.error('FATAL: Failed to initialize RCON object.', error);
-    rconError = error; // Store the initialization error
 }
 
-// Health Check Endpoint - Helps us see if the server is running
+// --- API Endpoints ---
+
 app.get('/', (req, res) => {
-    res.status(200).json({ 
-        status: 'RCON Service is running', 
-        rcon_initialized: !!rcon,
-        rcon_connection_error: rconError ? rconError.message : null
-    });
+    res.status(200).json({ status: 'RCON Service is running' });
 });
 
-// Endpoint to get the player list
-app.get('/api/rcon/players', async (req, res) => {
-    console.log('Received request for /api/rcon/players');
-    if (!rcon) {
-        console.error('/api/rcon/players: RCON not initialized.');
-        return res.status(500).json({ error: 'RCON service is not initialized.' });
-    }
-
-    try {
-        const players = await rcon.getPlayers();
-        console.log('Successfully fetched players:', players);
-        res.json({ players: players.players || [] });
-    } catch (error) {
-        console.error('RCON getPlayers Error:', error);
-        res.status(500).json({ error: 'Failed to get player list', details: error.message });
-    }
-});
-
-// Generic endpoint for other commands
 app.post('/api/rcon/command', async (req, res) => {
     const { command } = req.body;
-    console.log(`Received request for /api/rcon/command: ${command}`);
-    if (!rcon) {
-        console.error('/api/rcon/command: RCON not initialized.');
-        return res.status(500).json({ error: 'RCON service is not initialized.' });
-    }
     if (!command) {
         return res.status(400).json({ error: 'Command not provided' });
     }
-
+    
     try {
-        const response = await rcon.send(command);
-        console.log(`Response for command "${command}":`, response);
-        res.json({ response });
+        const response = await sendRcon(command);
+        if (command.toLowerCase() === 'players') {
+            const players = response.split('\n').slice(1, -1).map(line => {
+                const parts = line.trim().split(/\s+/);
+                if (parts.length >= 4) {
+                    const [id, name, score, ping] = parts;
+                    return { id, name, score, ping };
+                }
+                return null;
+            }).filter(p => p !== null);
+            res.json({ response, players });
+        } else {
+            res.json({ response });
+        }
     } catch (error) {
-        console.error('RCON command Error:', error);
+        console.error('RCON Error:', error);
         res.status(500).json({ error: 'Failed to send RCON command', details: error.message });
     }
 });
