@@ -433,7 +433,7 @@ app.post('/api/gemini-analysis', async (req, res) => {
     const activityLevel = (playerStats.online / 100) * 0.05;
 
     // 4. Job Market Health (Weight: 15%)
-    const [jobLogs] = await sampDbPool.query("SELECT description, created_at FROM log_job WHERE created_at >= NOW() - INTERVAL 24 HOUR");
+    const [jobLogs] = await sampDbPool.query("SELECT description, created_at FROM log_jobs WHERE created_at >= NOW() - INTERVAL 24 HOUR");
     const recentPayouts = jobLogs.reduce((sum, log) => {
         const match = log.description.match(/got paid (\d+)/);
         return sum + (match ? parseInt(match[1], 10) : 0);
