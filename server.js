@@ -186,7 +186,7 @@ app.get('/api/player/:name', async (req, res) => {
 
 app.post('/api/player/:name/teleport', async (req, res) => {
     const playerName = req.params.name;
-    const { x, y, z } = { x: 820.916, y: -1363.92, z: -0.508 }; // Hardcoded coordinates
+    const { x, y, z } = { x: 546.7000, y: -1281.5160, z: 17.2482 }; // Hardcoded coordinates
 
     if (!sampDbPool) {
         return res.status(503).json({ message: "Game database is not connected." });
@@ -235,7 +235,6 @@ app.get('/api/player-locations', async (req, res) => {
         return res.status(503).json({ message: "Game database is not connected." });
     }
     try {
-        // Now fetching faction ID along with other data
         const [rows] = await sampDbPool.query("SELECT `username`, `pos_x`, `pos_y`, `is_online`, `faction` FROM `users`");
         res.json(rows);
     } catch (error) {
@@ -244,7 +243,6 @@ app.get('/api/player-locations', async (req, res) => {
     }
 });
 
-// New endpoint for player list
 app.get('/api/all-players-list', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
@@ -416,63 +414,64 @@ app.post('/api/gemini-analysis', async (req, res) => {
         return res.json({ prediction: 0, explanation: "Not enough data for a prediction." });
     }
 
-    // --- Enhanced Factors ---
-    // 1. Recent Circulation Trend (Weight: 40%)
     const latestCirculation = circulationHistory[circulationHistory.length - 1].total_circulation;
     const previousCirculation = circulationHistory[circulationHistory.length - 2].total_circulation;
+
     if (previousCirculation === 0) {
         return res.json({ prediction: 0, explanation: "Cannot calculate prediction due to zero previous circulation." });
     }
-    const circulationChange = (latestCirculation - previousCirculation) / previousCirculation;
 
-    // 2. Player Engagement Score (Weight: 20%)
+    const circulationChange = (latestCirculation - previousCirculation) / previousCirculation;
+    const circulationImpact = circulationChange * 100 * 0.4;
+
     const engagementRatio = (playerStats.avgHours / (playerStats.maxHours || 1));
     const engagementScore = (engagementRatio - 0.5) * 0.1;
+    const engagementImpact = engagementScore * 100 * 0.2;
 
-    // 3. Current Activity Level (Weight: 15%)
     const activityLevel = (playerStats.online / 100) * 0.05;
+    const activityImpact = activityLevel * 100 * 0.15;
 
-    // 4. Job Market Health (Weight: 15%)
     const [jobLogs] = await sampDbPool.query("SELECT description, created_at FROM log_jobs WHERE created_at >= NOW() - INTERVAL 24 HOUR");
     const recentPayouts = jobLogs.reduce((sum, log) => {
         const match = log.description.match(/got paid (\d+)/);
         return sum + (match ? parseInt(match[1], 10) : 0);
     }, 0);
-    const jobMarketFactor = (recentPayouts / 1000000) * 0.02; // 2% boost for every ₦1,000,000 in payouts
+    const jobMarketFactor = (recentPayouts / 1000000) * 0.02;
+    const jobMarketImpact = jobMarketFactor * 100 * 0.15;
 
-    // 5. Player Acquisition Rate (Weight: 5%)
     const newPlayersToday = await db.collection('waitlist').countDocuments({ date: { $gte: new Date(new Date() - 24 * 60 * 60 * 1000) } });
-    const acquisitionFactor = (newPlayersToday / 50) * 0.01; // 1% boost for every 50 new players
+    const acquisitionFactor = (newPlayersToday / 50) * 0.01;
+    const acquisitionImpact = acquisitionFactor * 100 * 0.05;
 
-    // 6. Donation Velocity (Weight: 5%)
     const recentDonations = await db.collection('donations').find({ date: { $gte: new Date(new Date() - 24 * 60 * 60 * 1000) } }).toArray();
     const totalDonationAmount = recentDonations.reduce((sum, donation) => sum + parseInt(donation.price.replace(/[^0-9]/g, ''), 10), 0);
-    const donationFactor = (totalDonationAmount / 50000) * 0.01; // 1% boost for every ₦50,000 in donations
+    const donationFactor = (totalDonationAmount / 50000) * 0.01;
+    const donationImpact = donationFactor * 100 * 0.05;
 
-    // --- Prediction Calculation (Weighted) ---
-    const prediction = (circulationChange * 100 * 0.4) + 
-                       (engagementScore * 100 * 0.2) + 
-                       (activityLevel * 100 * 0.15) +
-                       (jobMarketFactor * 100 * 0.15) +
-                       (acquisitionFactor * 100 * 0.05) +
-                       (donationFactor * 100 * 0.05);
+    const prediction = circulationImpact + engagementImpact + activityImpact + jobMarketImpact + acquisitionImpact + donationImpact;
     
     const explanation = `
-        This simulated prediction is based on a weighted analysis of key server metrics:
-        ---
-        **Economic Trend (40%):** The total money in circulation changed by ${(circulationChange * 100).toFixed(2)}% in the last 24 hours.
-        ---
-        **Player Engagement (20%):** The average player has ${playerStats.avgHours} hours logged, indicating a dedicated player base. This contributes a ${(engagementScore * 100).toFixed(2)}% adjustment.
-        ---
-        **Player Activity (15%):** With ${playerStats.online} players currently active, the server's immediate health adjusts the prediction by ${(activityLevel * 100).toFixed(2)}% adjustment.
-        ---
-        **Job Market (15%):** A total of ₦${recentPayouts.toLocaleString()} was paid out from jobs in the last 24 hours, adding a ${(jobMarketFactor * 100).toFixed(2)}% boost.
-        ---
-        **Growth (5%):** ${newPlayersToday} new players have applied in the last 24 hours, resulting in a ${(acquisitionFactor * 100).toFixed(2)}% adjustment.
-        ---
-        **Community Investment (5%):** Recent donations totaling ₦${totalDonationAmount.toLocaleString()} provide a ${(donationFactor * 100).toFixed(2)}% indicator of positive sentiment.
-        ---
-        Combining these factors results in a simulated prediction of a ${prediction.toFixed(2)}% change in total circulation over the next 24 hours.
+**Forecast Breakdown: ${prediction.toFixed(2)}%**
+
+This prediction is based on the following weighted factors:
+
+* **Economic Trend (40% weight):** Impact of **${circulationImpact.toFixed(2)}%**
+    * *Details:* The total money in circulation changed by ${(circulationChange * 100).toFixed(2)}% in the last 24 hours.
+
+* **Player Engagement (20% weight):** Impact of **${engagementImpact.toFixed(2)}%**
+    * *Details:* The average player has ${playerStats.avgHours} hours, indicating a dedicated player base.
+
+* **Player Activity (15% weight):** Impact of **${activityImpact.toFixed(2)}%**
+    * *Details:* Based on ${playerStats.online} players currently online.
+
+* **Job Market (15% weight):** Impact of **+${jobMarketImpact.toFixed(2)}%**
+    * *Details:* ₦${recentPayouts.toLocaleString()} was earned by players from jobs in the last 24 hours.
+
+* **Server Growth (5% weight):** Impact of **+${acquisitionImpact.toFixed(2)}%**
+    * *Details:* ${newPlayersToday} new players have applied in the last 24 hours.
+
+* **Community Investment (5% weight):** Impact of **+${donationImpact.toFixed(2)}%**
+    * *Details:* Players have donated ₦${totalDonationAmount.toLocaleString()} in the last 24 hours, showing strong community support.
     `;
 
     res.json({ prediction: prediction.toFixed(2), explanation });
@@ -575,47 +574,42 @@ app.post('/api/quick-announcement', async (req, res) => {
 });
 
 // --- NEW JOB & PAYCHECK LOGS ENDPOINTS ---
+const JOBS = ["MINING", "MEAT CHOPPING", "PACKAGING", "GARBAGE", "LUMBER JACK", "DELIVERY", "COURIER", "FOLKLIFTING", "FOODPANDA", "FARMING"];
 
 app.get('/api/job-logs', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
-
     const page = parseInt(req.query.page) || 1;
-    const date = req.query.date;
     const limit = 50;
     const offset = (page - 1) * limit;
-
     try {
-        let whereClause = '';
-        let queryParams = [limit, offset];
-        let countQueryParams = [];
-
-        if (date) {
-            whereClause = "WHERE DATE(created_at) = ?";
-            queryParams = [date, limit, offset];
-            countQueryParams = [date];
-        }
-
-        const [logs] = await sampDbPool.query(`SELECT description, created_at FROM log_jobs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`, queryParams);
-        const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM log_jobs ${whereClause}`, countQueryParams);
-        
-        let totalPayout = 0;
-        if(date){
-            const [payoutRows] = await sampDbPool.query(`SELECT description FROM log_jobs ${whereClause}`, countQueryParams);
-            totalPayout = payoutRows.reduce((sum, row) => {
-                const match = row.description.match(/got paid (\d+)/);
-                return sum + (match ? parseInt(match[1], 10) : 0);
-            }, 0);
-        }
-
-        res.json({
-            logs,
-            totalPayout,
-            totalPages: Math.ceil(count / limit),
-            currentPage: page
-        });
+        const [logs] = await sampDbPool.query(`SELECT description, created_at FROM log_jobs ORDER BY created_at DESC LIMIT ? OFFSET ?`, [limit, offset]);
+        const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM log_jobs`);
+        res.json({ logs, totalPages: Math.ceil(count / limit), currentPage: page });
     } catch (error) {
         console.error(`MySQL Get Job Logs Error:`, error);
         res.status(500).json({ message: `Failed to fetch job logs.` });
+    }
+});
+
+app.get('/api/job-payouts', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+    try {
+        const [rows] = await sampDbPool.query("SELECT description FROM log_jobs");
+        const payouts = {};
+
+        JOBS.forEach(job => {
+            payouts[job] = rows
+                .filter(row => row.description.toUpperCase().includes(job))
+                .reduce((sum, row) => {
+                    const match = row.description.match(/got paid (\d+)/);
+                    return sum + (match ? parseInt(match[1], 10) : 0);
+                }, 0);
+        });
+
+        res.json(payouts);
+    } catch (error) {
+        console.error("MySQL Get Job Payouts Error:", error);
+        res.status(500).json({ message: "Failed to fetch job payouts." });
     }
 });
 
@@ -632,26 +626,6 @@ app.get('/api/player-job-logs/:name', async (req, res) => {
         res.status(500).json({ message: "Failed to fetch player job logs." });
     }
 });
-
-app.get('/api/job-payouts', async (req, res) => {
-    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
-    try {
-        const [rows] = await sampDbPool.query("SELECT description FROM log_jobs");
-        const jobs = ["MINING", "MEAT CHOPPING", "PACKAGING", "GARBAGE", "LUMBER JACK", "DELIVERY", "COURIER", "FOLKLIFTING", "FOODPANDA", "FARMING"];
-        const payouts = {};
-
-        jobs.forEach(job => {
-            payouts[job] = rows.filter(row => row.description.includes(job))
-                                .reduce((sum, row) => sum + (parseInt(row.description.match(/got paid (\d+)/)?.[1], 10) || 0), 0);
-        });
-
-        res.json(payouts);
-    } catch (error) {
-        console.error("MySQL Get Job Payouts Error:", error);
-        res.status(500).json({ message: "Failed to fetch job payouts." });
-    }
-});
-
 
 app.get('/api/paycheck-logs', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
@@ -704,15 +678,69 @@ app.get('/api/paycheck-payout-total', async (req, res) => {
     }
 });
 
+app.get('/api/transaction-logs', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+    const page = parseInt(req.query.page) || 1;
+    const search = req.query.search || '';
+    const limit = 50;
+    const offset = (page - 1) * limit;
+    
+    let whereClause = '';
+    let queryParams = [limit, offset];
+    let countQueryParams = [];
+
+    if(search) {
+        whereClause = "WHERE player_name LIKE ?";
+        const searchTerm = `%${search}%`;
+        queryParams = [searchTerm, limit, offset];
+        countQueryParams = [searchTerm];
+    }
+    
+    try {
+        const [logs] = await sampDbPool.query(`SELECT player_name, amount, description, created_at FROM log_transaction ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`, queryParams);
+        const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM log_transaction ${whereClause}`, countQueryParams);
+        res.json({ logs, totalPages: Math.ceil(count / limit), currentPage: page });
+    } catch (error) {
+        console.error("MySQL Get Transaction Logs Error:", error);
+        res.status(500).json({ message: "Failed to fetch transaction logs." });
+    }
+});
+
+app.get('/api/property-logs', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+    const page = parseInt(req.query.page) || 1;
+    const search = req.query.search || '';
+    const limit = 50;
+    const offset = (page - 1) * limit;
+
+    let whereClause = '';
+    let queryParams = [limit, offset];
+    let countQueryParams = [];
+
+    if(search) {
+        whereClause = "WHERE description LIKE ?";
+        const searchTerm = `%${search}%`;
+        queryParams = [searchTerm, limit, offset];
+        countQueryParams = [searchTerm];
+    }
+    
+    try {
+        const [logs] = await sampDbPool.query(`SELECT date, description FROM log_property ${whereClause} ORDER BY date DESC LIMIT ? OFFSET ?`, queryParams);
+        const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM log_property ${whereClause}`, countQueryParams);
+        res.json({ logs, totalPages: Math.ceil(count / limit), currentPage: page });
+    } catch (error) {
+        console.error("MySQL Get Property Logs Error:", error);
+        res.status(500).json({ message: "Failed to fetch property logs." });
+    }
+});
+
 // --- SERVER AND CRON JOB START ---
 Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
-    // LINK THE FACTION ROUTES MODULE
     app.use('/api', factionRoutes(sampDbPool));
 
     app.listen(PORT, () => {
         console.log(`Server started on port ${PORT}`);
 
-        console.log("Economy snapshot job scheduled for 23:59 daily.");
         cron.schedule('59 23 * * *', async () => {
             console.log(`[${new Date().toLocaleString()}] Running daily economy snapshot job...`);
             try {
@@ -725,13 +753,11 @@ Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
                     [totalCirculation, totalCirculation]
                 );
                 console.log(`Successfully saved economy snapshot: $${totalCirculation.toLocaleString()}`);
-
             } catch (err) {
                 console.error("Error running economy snapshot job:", err);
             }
         });
         
-        console.log("Discord announcement job scheduled to run every minute.");
         cron.schedule('* * * * *', async () => {
             try {
                 if (!sampDbPool) { return; }
