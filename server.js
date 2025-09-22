@@ -186,7 +186,7 @@ app.get('/api/player/:name', async (req, res) => {
 
 app.post('/api/player/:name/teleport', async (req, res) => {
     const playerName = req.params.name;
-    const { x, y, z } = { x: 546.7000, y: -1281.5160, z: 17.2482 }; // Hardcoded coordinates
+    const { x, y, z } = { x: 820.916, y: -1363.92, z: -0.508 }; // Hardcoded coordinates
 
     if (!sampDbPool) {
         return res.status(503).json({ message: "Game database is not connected." });
