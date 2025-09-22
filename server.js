@@ -235,6 +235,7 @@ app.get('/api/player-locations', async (req, res) => {
         return res.status(503).json({ message: "Game database is not connected." });
     }
     try {
+        // Now fetching faction ID along with other data
         const [rows] = await sampDbPool.query("SELECT `username`, `pos_x`, `pos_y`, `is_online`, `faction` FROM `users`");
         res.json(rows);
     } catch (error) {
@@ -243,6 +244,7 @@ app.get('/api/player-locations', async (req, res) => {
     }
 });
 
+// New endpoint for player list
 app.get('/api/all-players-list', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
@@ -264,6 +266,7 @@ app.get('/api/duplicate-ips', async (req, res) => {
         res.status(500).json({ message: "Failed to fetch duplicate IPs." });
     }
 });
+
 
 app.post('/api/player/:name/add-money', async (req, res) => {
     const playerName = req.params.name;
@@ -306,6 +309,7 @@ app.post('/api/player/:name/ban', async (req, res) => {
         res.status(500).json({ message: "Failed to ban player." });
     }
 });
+
 
 app.get('/api/logs/:type', async (req, res) => {
     const validTypes = { admin: 'log_admin', faction: 'log_faction', gang: 'log_gang' };
@@ -538,6 +542,7 @@ app.post('/api/quick-announcement', async (req, res) => {
     sendToDiscord(EVENTS_WEBHOOK_URL, embed);
     res.status(200).json({ message: 'Announcement sent!' });
 });
+
 // --- NEW JOB & PAYCHECK LOGS ENDPOINTS ---
 
 app.get('/api/job-logs', async (req, res) => {
@@ -583,6 +588,20 @@ app.get('/api/job-logs', async (req, res) => {
     }
 });
 
+
+app.get('/api/player-job-logs/:name', async (req, res) => {
+    const playerName = req.params.name;
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+
+    try {
+        const [logs] = await sampDbPool.query("SELECT description, created_at FROM log_jobs WHERE description LIKE ? ORDER BY created_at DESC", [`%${playerName}%`]);
+        res.json(logs);
+    } catch (error) {
+        console.error("MySQL Get Player Job Logs Error:", error);
+        res.status(500).json({ message: "Failed to fetch player job logs." });
+    }
+});
+
 app.get('/api/job-payouts', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
@@ -602,18 +621,6 @@ app.get('/api/job-payouts', async (req, res) => {
     }
 });
 
-app.get('/api/player-job-logs/:name', async (req, res) => {
-    const playerName = req.params.name;
-    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
-
-    try {
-        const [logs] = await sampDbPool.query("SELECT description, created_at FROM log_jobs WHERE description LIKE ? ORDER BY created_at DESC", [`%${playerName}%`]);
-        res.json(logs);
-    } catch (error) {
-        console.error("MySQL Get Player Job Logs Error:", error);
-        res.status(500).json({ message: "Failed to fetch player job logs." });
-    }
-});
 
 app.get('/api/paycheck-logs', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
@@ -637,10 +644,17 @@ app.get('/api/paycheck-logs', async (req, res) => {
         const [logs] = await sampDbPool.query(`SELECT log_date, log_hour, total_amount FROM paycheck_logs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`, queryParams);
         const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM paycheck_logs ${whereClause}`, countQueryParams);
         
+        let dailyTotal = 0;
+        if (date) {
+            const [[{ total }]] = await sampDbPool.query(`SELECT SUM(total_amount) as total FROM paycheck_logs ${whereClause}`, countQueryParams);
+            dailyTotal = total || 0;
+        }
+
         res.json({
             logs,
             totalPages: Math.ceil(count / limit),
-            currentPage: page
+            currentPage: page,
+            dailyTotal
         });
     } catch (error) {
         console.error(`MySQL Get Paycheck Logs Error:`, error);
