@@ -618,13 +618,41 @@ app.get('/api/player-job-logs/:name', async (req, res) => {
 app.get('/api/paycheck-logs', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
 
+    const page = parseInt(req.query.page) || 1;
+    const date = req.query.date;
+    const limit = 50;
+    const offset = (page - 1) * limit;
+
     try {
-        const [rows] = await sampDbPool.query("SELECT description FROM log_job");
-        const totalPayout = rows.reduce((sum, row) => {
-            const match = row.description.match(/got paid (\d+)/);
-            return sum + (match ? parseInt(match[1], 10) : 0);
-        }, 0);
-        res.json({ totalPayout });
+        let whereClause = '';
+        let queryParams = [limit, offset];
+        let countQueryParams = [];
+
+        if (date) {
+            whereClause = "WHERE DATE(log_date) = ?";
+            queryParams = [date, limit, offset];
+            countQueryParams = [date];
+        }
+
+        const [logs] = await sampDbPool.query(`SELECT log_date, log_hour, total_amount FROM paycheck_logs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`, queryParams);
+        const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM paycheck_logs ${whereClause}`, countQueryParams);
+        
+        res.json({
+            logs,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page
+        });
+    } catch (error) {
+        console.error(`MySQL Get Paycheck Logs Error:`, error);
+        res.status(500).json({ message: `Failed to fetch paycheck logs.` });
+    }
+});
+
+app.get('/api/paycheck-payout-total', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+    try {
+        const [[{ total }]] = await sampDbPool.query("SELECT SUM(total_amount) as total FROM paycheck_logs");
+        res.json({ total: total || 0 });
     } catch (error) {
         console.error("MySQL Get Total Paycheck Payout Error:", error);
         res.status(500).json({ message: "Failed to fetch total paycheck payout." });
