@@ -460,19 +460,19 @@ app.post('/api/gemini-analysis', async (req, res) => {
     const explanation = `
         This simulated prediction is based on a weighted analysis of key server metrics:
         ---
-        **Economic Trend (40%):** The total money in circulation changed by **${(circulationChange * 100).toFixed(2)}%** in the last 24 hours.
+        **Economic Trend (40%):** The total money in circulation changed by ${(circulationChange * 100).toFixed(2)}% in the last 24 hours.
         ---
-        **Player Engagement (20%):** The average player has **${playerStats.avgHours} hours** logged, indicating a dedicated player base. This contributes a **${(engagementScore * 100).toFixed(2)}%** adjustment.
+        **Player Engagement (20%):** The average player has **${playerStats.avgHours} hours** logged, indicating a dedicated player base. This contributes a ${(engagementScore * 100).toFixed(2)}% adjustment.
         ---
-        **Player Activity (15%):** With **${playerStats.online} players** currently active, the server's immediate health adjusts the prediction by **${(activityLevel * 100).toFixed(2)}%**.
+        **Player Activity (15%):** With ${playerStats.online} players currently active, the server's immediate health adjusts the prediction by ${(activityLevel * 100).toFixed(2)}% adjustment.
         ---
-        **Job Market (15%):** A total of **₦${recentPayouts.toLocaleString()}** was paid out from jobs in the last 24 hours, adding a **${(jobMarketFactor * 100).toFixed(2)}%** boost.
+        **Job Market (15%):** A total of ₦${recentPayouts.toLocaleString()} was paid out from jobs in the last 24 hours, adding a ${(jobMarketFactor * 100).toFixed(2)}% boost.
         ---
-        **Growth (5%):** **${newPlayersToday}** new players have applied in the last 24 hours, resulting in a **${(acquisitionFactor * 100).toFixed(2)}%** adjustment.
+        **Growth (5%):** ${newPlayersToday} new players have applied in the last 24 hours, resulting in a ${(acquisitionFactor * 100).toFixed(2)}% adjustment.
         ---
-        **Community Investment (5%):** Recent donations totaling **₦${totalDonationAmount.toLocaleString()}** provide a **${(donationFactor * 100).toFixed(2)}%** indicator of positive sentiment.
+        **Community Investment (5%):** Recent donations totaling ₦${totalDonationAmount.toLocaleString()} provide a ${(donationFactor * 100).toFixed(2)}% indicator of positive sentiment.
         ---
-        Combining these factors results in a simulated prediction of a **${prediction.toFixed(2)}%** change in total circulation over the next 24 hours.
+        Combining these factors results in a simulated prediction of a ${prediction.toFixed(2)}% change in total circulation over the next 24 hours.
     `;
 
     res.json({ prediction: prediction.toFixed(2), explanation });
