@@ -5,7 +5,7 @@ const cors = require('cors');
 const { MongoClient, ObjectId } = require('mongodb');
 const mysql = require('mysql2/promise');
 const cron = require('node-cron');
-const factionRoutes = require('./faction-routes'); // Import the new faction routes module
+const factionRoutes = require('./faction-routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,7 +17,6 @@ const ADMIN_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418034132918
 const FACTION_LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1418034132918861846/38JJ6MS0b1gXj4hbkfr9kkOgDrXxYuytjUv5HX8rYOlImK9CHpsj3JSsCglupTt9Pkgf";
 const GANG_LOG_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418402752211451944/XT6G-Q96LobSbmoubUJ3QBxux9E9F1f3oBklBQ28ztE06SYE4jXdvnLmvPMJKe6wfP1T";
 const EVENTS_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1418604487060226179/N1MoYe7h7wkwsIQjaQ9Nb6Vn4lYmTJ0a2QvJwh1CG3RyCGOVFOyBcPkiWWyhUCJ2YCvK";
- // <<<--- ADD THIS LINE AND YOUR WEBHOOK URL
 
 const MONGODB_URI = "mongodb+srv://nigeria-vibe-rp:tZVQJoaro79jzoAr@nigeria-vibe-rp.ldx39qg.mongodb.net/?retryWrites=true&w=majority&appName=nigeria-vibe-rp";
 const DB_NAME = "nigeria-vibe-rp";
@@ -34,11 +33,9 @@ const sampDbOptions = {
     queueLimit: 0
 };
 
-// Simplified admin credentials for a single login
 const ADMIN_USERNAME = "adminnvrp";
 const ADMIN_PASSWORD = "password1234";
 
-// --- DATABASE CONNECTIONS ---
 async function connectToMongo() {
     try {
         const client = new MongoClient(MONGODB_URI);
@@ -62,7 +59,6 @@ async function connectToSampDb() {
     }
 }
 
-// --- HELPER FUNCTIONS ---
 function getFactionName(factionId) {
     switch (factionId) {
         case 1: return "Police";
@@ -97,7 +93,6 @@ async function sendToDiscord(webhookUrl, embed) {
     }
 }
 
-// --- CONFIGURATION & MIDDLEWARE ---
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -108,8 +103,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage }).single('screenshot');
 
-
-// --- API ROUTES ---
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
@@ -190,10 +183,10 @@ app.get('/api/player/:name', async (req, res) => {
         res.status(500).json({ message: "An error occurred while fetching player data." });
     }
 });
-// New Teleport Endpoint
+
 app.post('/api/player/:name/teleport', async (req, res) => {
     const playerName = req.params.name;
-    const { x, y, z } = { x: 820.916, y: -1363.92, z: -0.508 }; // Hardcoded coordinates
+    const { x, y, z } = { x: 546.7000, y: -1281.5160, z: 17.2482 }; // Hardcoded coordinates
 
     if (!sampDbPool) {
         return res.status(503).json({ message: "Game database is not connected." });
@@ -242,7 +235,6 @@ app.get('/api/player-locations', async (req, res) => {
         return res.status(503).json({ message: "Game database is not connected." });
     }
     try {
-        // Now fetching faction ID along with other data
         const [rows] = await sampDbPool.query("SELECT `username`, `pos_x`, `pos_y`, `is_online`, `faction` FROM `users`");
         res.json(rows);
     } catch (error) {
@@ -251,7 +243,6 @@ app.get('/api/player-locations', async (req, res) => {
     }
 });
 
-// New endpoint for player list
 app.get('/api/all-players-list', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
@@ -273,7 +264,6 @@ app.get('/api/duplicate-ips', async (req, res) => {
         res.status(500).json({ message: "Failed to fetch duplicate IPs." });
     }
 });
-
 
 app.post('/api/player/:name/add-money', async (req, res) => {
     const playerName = req.params.name;
@@ -316,7 +306,6 @@ app.post('/api/player/:name/ban', async (req, res) => {
         res.status(500).json({ message: "Failed to ban player." });
     }
 });
-
 
 app.get('/api/logs/:type', async (req, res) => {
     const validTypes = { admin: 'log_admin', faction: 'log_faction', gang: 'log_gang' };
@@ -549,7 +538,7 @@ app.post('/api/quick-announcement', async (req, res) => {
     sendToDiscord(EVENTS_WEBHOOK_URL, embed);
     res.status(200).json({ message: 'Announcement sent!' });
 });
-// --- NEW JOB LOGS ENDPOINTS ---
+// --- NEW JOB & PAYCHECK LOGS ENDPOINTS ---
 
 app.get('/api/job-logs', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
@@ -567,7 +556,7 @@ app.get('/api/job-logs', async (req, res) => {
         if (date) {
             whereClause = "WHERE DATE(created_at) = ?";
             queryParams = [date, limit, offset];
-            countQueryParams = [datewe];
+            countQueryParams = [date];
         }
 
         const [logs] = await sampDbPool.query(`SELECT description, created_at FROM log_jobs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`, queryParams);
@@ -594,6 +583,24 @@ app.get('/api/job-logs', async (req, res) => {
     }
 });
 
+app.get('/api/job-payouts', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+    try {
+        const [rows] = await sampDbPool.query("SELECT description FROM log_jobs");
+        const jobs = ["MINING", "MEAT CHOPPING", "PACKAGING", "GARBAGE", "LUMBER JACK", "DELIVERY", "COURIER", "FORKLIFTING", "FOODPANDA", "FARMING"];
+        const payouts = {};
+
+        jobs.forEach(job => {
+            payouts[job] = rows.filter(row => row.description.includes(job))
+                                .reduce((sum, row) => sum + (parseInt(row.description.match(/got paid (\d+)/)?.[1], 10) || 0), 0);
+        });
+
+        res.json(payouts);
+    } catch (error) {
+        console.error("MySQL Get Job Payouts Error:", error);
+        res.status(500).json({ message: "Failed to fetch job payouts." });
+    }
+});
 
 app.get('/api/player-job-logs/:name', async (req, res) => {
     const playerName = req.params.name;
@@ -608,19 +615,47 @@ app.get('/api/player-job-logs/:name', async (req, res) => {
     }
 });
 
-app.get('/api/job-logs/payout-total', async (req, res) => {
+app.get('/api/paycheck-logs', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
 
+    const page = parseInt(req.query.page) || 1;
+    const date = req.query.date;
+    const limit = 50;
+    const offset = (page - 1) * limit;
+
     try {
-        const [rows] = await sampDbPool.query("SELECT description FROM log_jobs");
-        const totalPayout = rows.reduce((sum, row) => {
-            const match = row.description.match(/got paid (\d+)/);
-            return sum + (match ? parseInt(match[1], 10) : 0);
-        }, 0);
-        res.json({ totalPayout });
+        let whereClause = '';
+        let queryParams = [limit, offset];
+        let countQueryParams = [];
+
+        if (date) {
+            whereClause = "WHERE DATE(log_date) = ?";
+            queryParams = [date, limit, offset];
+            countQueryParams = [date];
+        }
+
+        const [logs] = await sampDbPool.query(`SELECT log_date, log_hour, total_amount FROM paycheck_logs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`, queryParams);
+        const [[{ count }]] = await sampDbPool.query(`SELECT COUNT(*) as count FROM paycheck_logs ${whereClause}`, countQueryParams);
+        
+        res.json({
+            logs,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page
+        });
     } catch (error) {
-        console.error("MySQL Get Total Payout Error:", error);
-        res.status(500).json({ message: "Failed to fetch total payout." });
+        console.error(`MySQL Get Paycheck Logs Error:`, error);
+        res.status(500).json({ message: `Failed to fetch paycheck logs.` });
+    }
+});
+
+app.get('/api/paycheck-payout-total', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
+    try {
+        const [[{ total }]] = await sampDbPool.query("SELECT SUM(total_amount) as total FROM paycheck_logs");
+        res.json({ total: total || 0 });
+    } catch (error) {
+        console.error("MySQL Get Total Paycheck Payout Error:", error);
+        res.status(500).json({ message: "Failed to fetch total paycheck payout." });
     }
 });
 
