@@ -10,9 +10,9 @@ app.use(express.json());
 
 // --- Robust RCON Connection Setup ---
 const rconOptions = {
-    host: process.env.SAMP_HOST || '217.182.175.212',
-    port: process.env.SAMP_PORT || 28071,
-    password: process.env.RCON_PASSWORD || '10903f2478b10a37' // !!! IMPORTANT: Set RCON_PASSWORD as an environment variable on Render !!!
+    host: String(process.env.SAMP_HOST || '217.182.175.212'),
+    port: parseInt(process.env.SAMP_PORT || 28071, 10),
+    password: String(process.env.RCON_PASSWORD || '10903f2478b10a37') // !!! IMPORTANT: Set RCON_PASSWORD as an environment variable on Render !!!
 };
 
 // Log the options to help debug on Render
