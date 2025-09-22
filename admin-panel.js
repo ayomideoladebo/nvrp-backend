@@ -3,16 +3,22 @@ const cors = require('cors');
 const Rcon = require('samp-rcon');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001; // Render uses a dynamic port
 
 app.use(cors());
 app.use(express.json());
 
-const rcon = new Rcon({
-    host: '217.182.175.212',
-    port: 28071, // Ensure this is your server's RCON port
-    password: '10903f2478b10a37' // !!! IMPORTANT: Replace with your actual RCON password from server.cfg !!!
-});
+// --- RCON Connection Setup ---
+// This configuration is more robust and prevents type errors during deployment.
+const rconOptions = {
+    host: String(process.env.SAMP_HOST || '217.182.175.212'),
+    port: parseInt(process.env.SAMP_PORT || 28071, 10),
+    password: String(process.env.RCON_PASSWORD || '10903f2478b10a37') // !!! IMPORTANT: For security, set this as an environment variable on Render !!!
+};
+
+console.log(`Attempting to connect to RCON at ${rconOptions.host}:${rconOptions.port}`);
+
+const rcon = new Rcon(rconOptions);
 
 app.post('/api/rcon/command', async (req, res) => {
     const { command } = req.body;
@@ -31,7 +37,7 @@ app.post('/api/rcon/command', async (req, res) => {
                     return { id, name, score, ping };
                 }
                 return null;
-            }).filter(p => p !== null); // Filter out any lines that couldn't be parsed
+            }).filter(p => p !== null);
             res.json({ response, players });
         } else {
             res.json({ response });
@@ -43,5 +49,5 @@ app.post('/api/rcon/command', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Admin panel RCON service running on port ${PORT}`);
+    console.log(`Admin panel RCON service is running on port ${PORT}`);
 });
