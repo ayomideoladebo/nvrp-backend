@@ -64,7 +64,7 @@ app.get('/api/economy/all-stats', async (req, res) => {
         
         const topMiners = await safeQuery("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_jobs WHERE description LIKE '%MINING%' GROUP BY player ORDER BY total DESC LIMIT 5");
         const topFarmers = await safeQuery("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_jobs WHERE description LIKE '%FARMING%' GROUP BY player ORDER BY total DESC LIMIT 5");
-        const topMeatChopper = await safeQuery("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_jobs WHERE description LIKE '%MEAT CHOPPING%' GROUP BY player ORDER BY total DESC LIMIT 5");
+        const topMeatChoppers = await safeQuery("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_jobs WHERE description LIKE '%MEAT CHOPPING%' GROUP BY player ORDER BY total DESC LIMIT 5");
         const businessMagnates = await safeQuery("SELECT u.username as player, COUNT(b.id) as business_count FROM businesses b JOIN users u ON b.ownerid = u.id WHERE b.ownerid != 0 GROUP BY u.username ORDER BY business_count DESC LIMIT 5");
         const highRollers = await safeQuery("SELECT username, (cash + bank) as wealth, hours FROM users ORDER BY wealth DESC, hours ASC LIMIT 5");
         const grinders = await safeQuery("SELECT username, (cash + bank) as wealth, hours FROM users ORDER BY hours DESC, wealth ASC LIMIT 5");
