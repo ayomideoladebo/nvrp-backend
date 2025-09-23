@@ -3,14 +3,12 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 
 const app = express();
-// This will run on its own port, either assigned by Render or 3002 locally
-const PORT = process.env.PORT || 3002; 
+const PORT = process.env.PORT || 3002;
 
 app.use(cors());
 app.use(express.json());
 
 // --- Database Connection ---
-// Using the credentials from your db.json file
 const dbConfig = {
     host: '217.182.175.212',
     user: 'u3225914_Ur9bu1nnxG',
@@ -24,71 +22,72 @@ const dbConfig = {
 
 let sampDbPool;
 
+// --- Helper function to safely execute queries ---
+// This will prevent a single bad query from crashing the whole server.
+async function safeQuery(query, params = []) {
+    try {
+        const [results] = await sampDbPool.query(query, params);
+        return results;
+    } catch (error) {
+        console.error(`--- QUERY FAILED ---`);
+        console.error(`Query: ${query}`);
+        console.error(`Error: ${error.message}`);
+        console.error(`--------------------`);
+        return null; // Return null on error instead of crashing
+    }
+}
+
+
 // --- Main Data Endpoint ---
-// A single, powerful endpoint to fetch all stats for the dashboard
 app.get('/api/economy/all-stats', async (req, res) => {
     if (!sampDbPool) {
         return res.status(503).json({ message: "Database service is not available." });
     }
     
     try {
-        // Run all queries concurrently for maximum speed
-        const [
-            [[playerStats]],
-            [[wealthStats]],
-            [assetValues],
-            [topVehicles],
-            [[totalPlayersResult]],
-            [topMiners],
-            [topTruckers],
-            [topCouriers],
-            [businessMagnates],
-            [highRollers],
-            [grinders]
-        ] = await Promise.all([
-            sampDbPool.query("SELECT COUNT(*) as totalPlayers, (SELECT COUNT(*) FROM users WHERE last_seen >= CURDATE()) as playersToday FROM users"),
-            sampDbPool.query("SELECT username, (cash + bank) as total_wealth FROM users ORDER BY total_wealth DESC LIMIT 1"),
-            sampDbPool.query(`
-                SELECT 
-                    (SELECT SUM(cash + bank) FROM users) as playerLiquid,
-                    (SELECT SUM(price) FROM vehicles WHERE owner != '' AND price > 0) as vehicles,
-                    (SELECT SUM(price) FROM houses WHERE ownerid != -1) as houses,
-                    (SELECT SUM(price) FROM businesses WHERE ownerid != 0) as businesses
-            `),
-            sampDbPool.query("SELECT modelid, COUNT(*) as count FROM vehicles WHERE price > 50000 AND owner != '' GROUP BY modelid ORDER BY count DESC LIMIT 5"),
-            sampDbPool.query("SELECT COUNT(*) as count FROM users"),
-            sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%MINING%' GROUP BY player ORDER BY total DESC LIMIT 5"),
-            sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%DELIVERY%' GROUP BY player ORDER BY total DESC LIMIT 5"),
-            sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%COURIER%' GROUP BY player ORDER BY total DESC LIMIT 5"),
-            sampDbPool.query("SELECT u.username as player, COUNT(b.id) as business_count FROM businesses b JOIN users u ON b.ownerid = u.id WHERE b.ownerid != 0 GROUP BY u.username ORDER BY business_count DESC LIMIT 5"),
-            sampDbPool.query("SELECT username, (cash + bank) as wealth, playtime FROM users ORDER BY wealth DESC, playtime ASC LIMIT 5"),
-            sampDbPool.query("SELECT username, (cash + bank) as wealth, playtime FROM users ORDER BY playtime DESC, wealth ASC LIMIT 5")
-        ]);
-
-        const totalPlayers = totalPlayersResult.count;
+        const playerStats = await safeQuery("SELECT COUNT(*) as totalPlayers, (SELECT COUNT(*) FROM users WHERE last_seen >= CURDATE()) as playersToday FROM users");
+        const wealthStats = await safeQuery("SELECT username, (cash + bank) as total_wealth FROM users ORDER BY total_wealth DESC LIMIT 1");
+        const assetValues = await safeQuery(`
+            SELECT 
+                (SELECT SUM(cash + bank) FROM users) as playerLiquid,
+                (SELECT SUM(price) FROM vehicles WHERE owner != '' AND price > 0) as vehicles,
+                (SELECT SUM(price) FROM houses WHERE ownerid != -1) as houses,
+                (SELECT SUM(price) FROM businesses WHERE ownerid != 0) as businesses
+        `);
+        const topVehicles = await safeQuery("SELECT modelid, COUNT(*) as count FROM vehicles WHERE price > 50000 AND owner != '' GROUP BY modelid ORDER BY count DESC LIMIT 5");
+        const totalPlayersResult = await safeQuery("SELECT COUNT(*) as count FROM users");
+        
+        const totalPlayers = totalPlayersResult ? totalPlayersResult[0].count : 0;
         const top10PercentCount = Math.ceil(totalPlayers * 0.1);
         
-        const [[top10PercentWealth]] = await sampDbPool.query("SELECT SUM(cash + bank) as topWealth FROM (SELECT cash, bank FROM users ORDER BY (cash + bank) DESC LIMIT ?) as top_users", [top10PercentCount]);
+        const top10PercentWealth = await safeQuery("SELECT SUM(cash + bank) as topWealth FROM (SELECT cash, bank FROM users ORDER BY (cash + bank) DESC LIMIT ?) as top_users", [top10PercentCount]);
+        
+        const topMiners = await safeQuery("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%MINING%' GROUP BY player ORDER BY total DESC LIMIT 5");
+        const topTruckers = await safeQuery("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%DELIVERY%' GROUP BY player ORDER BY total DESC LIMIT 5");
+        const topCouriers = await safeQuery("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%COURIER%' GROUP BY player ORDER BY total DESC LIMIT 5");
+        const businessMagnates = await safeQuery("SELECT u.username as player, COUNT(b.id) as business_count FROM businesses b JOIN users u ON b.ownerid = u.id WHERE b.ownerid != 0 GROUP BY u.username ORDER BY business_count DESC LIMIT 5");
+        const highRollers = await safeQuery("SELECT username, (cash + bank) as wealth, playtime FROM users ORDER BY wealth DESC, playtime ASC LIMIT 5");
+        const grinders = await safeQuery("SELECT username, (cash + bank) as wealth, playtime FROM users ORDER BY playtime DESC, wealth ASC LIMIT 5");
         
         res.json({
             keyMetrics: {
-                totalPlayers: playerStats.totalPlayers,
-                playersToday: playerStats.playersToday,
-                totalWealth: assetValues.playerLiquid,
-                richestPlayer: wealthStats
+                totalPlayers: playerStats ? playerStats[0].totalPlayers : 0,
+                playersToday: playerStats ? playerStats[0].playersToday : 0,
+                totalWealth: assetValues ? assetValues[0].playerLiquid : 0,
+                richestPlayer: wealthStats ? wealthStats[0] : { username: 'N/A' }
             },
             assetDistribution: {
-                playerLiquid: parseInt(assetValues.playerLiquid) || 0,
-                vehicles: parseInt(assetValues.vehicles) || 0,
-                houses: parseInt(assetValues.houses) || 0,
-                businesses: parseInt(assetValues.businesses) || 0,
+                playerLiquid: assetValues ? parseInt(assetValues[0].playerLiquid) : 0,
+                vehicles: assetValues ? parseInt(assetValues[0].vehicles) : 0,
+                houses: assetValues ? parseInt(assetValues[0].houses) : 0,
+                businesses: assetValues ? parseInt(assetValues[0].businesses) : 0,
             },
             endGameAssets: {
                 topVehicles
             },
             assetInequality: {
-                top10PercentTotal: top10PercentWealth.topWealth || 0,
-                serverTotal: assetValues.playerLiquid || 0
+                top10PercentTotal: top10PercentWealth ? top10PercentWealth[0].topWealth : 0,
+                serverTotal: assetValues ? assetValues[0].playerLiquid : 0
             },
             playerArchetypes: {
                 topMiners,
@@ -101,8 +100,8 @@ app.get('/api/economy/all-stats', async (req, res) => {
         });
 
     } catch (error) {
-        console.error("SQL Get Advanced Economy Error:", error);
-        res.status(500).json({ message: "Failed to fetch advanced economy stats.", error: error.message });
+        console.error("Critical Error in /api/economy/all-stats endpoint:", error);
+        res.status(500).json({ message: "A critical error occurred while processing the request.", error: error.message });
     }
 });
 
