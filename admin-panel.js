@@ -92,7 +92,7 @@ app.get('/api/economy/all-stats', async (req, res) => {
             playerArchetypes: {
                 topMiners,
                 topFarmers,
-                topMeatChopper,
+                topMeatChoppers,
                 businessMagnates,
                 highRollers,
                 grinders
