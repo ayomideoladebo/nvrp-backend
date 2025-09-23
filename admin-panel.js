@@ -3,14 +3,14 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 
 const app = express();
-// We'll run this on a different port to avoid conflicts with your main server.js
+// This will run on its own port, either assigned by Render or 3002 locally
 const PORT = process.env.PORT || 3002; 
 
 app.use(cors());
 app.use(express.json());
 
 // --- Database Connection ---
-// I've used the credentials from your uploaded db.json file
+// Using the credentials from your db.json file
 const dbConfig = {
     host: '217.182.175.212',
     user: 'u3225914_Ur9bu1nnxG',
