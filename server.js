@@ -733,6 +733,46 @@ app.get('/api/property-logs', async (req, res) => {
     }
 });
 
+// --- NEW ADVANCED ECONOMY ENDPOINTS ---
+
+app.get('/api/economy/asset-distribution', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "DB not connected." });
+    try {
+        const [playerWealth] = await sampDbPool.query("SELECT SUM(cash) as totalCash, SUM(bank) as totalBank FROM users");
+        const [vehicleValue] = await sampDbPool.query("SELECT SUM(price) as totalValue FROM vehicles WHERE owner != ''");
+        const [houseValue] = await sampDbPool.query("SELECT SUM(price) as totalValue FROM houses WHERE ownerid != -1");
+        const [businessValue] = await sampDbPool.query("SELECT SUM(price) as totalValue FROM businesses WHERE ownerid != 0");
+
+        res.json({
+            playerLiquid: (parseInt(playerWealth[0].totalCash) || 0) + (parseInt(playerWealth[0].totalBank) || 0),
+            vehicles: parseInt(vehicleValue[0].totalValue) || 0,
+            houses: parseInt(houseValue[0].totalValue) || 0,
+            businesses: parseInt(businessValue[0].totalValue) || 0,
+        });
+    } catch (error) {
+        console.error("SQL Get Asset Distribution Error:", error);
+        res.status(500).json({ message: "Failed to fetch asset distribution." });
+    }
+});
+
+app.get('/api/economy/player-archetypes', async (req, res) => {
+    if (!sampDbPool) return res.status(503).json({ message: "DB not connected." });
+    try {
+        const [topMiners] = await sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' ', 1) as player, SUM(CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(description, 'got paid ', -1), ' ', 1) AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%MINING%' GROUP BY player ORDER BY total DESC LIMIT 5");
+        const [topTruckers] = await sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' ', 1) as player, SUM(CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(description, 'got paid ', -1), ' ', 1) AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%DELIVERY%' GROUP BY player ORDER BY total DESC LIMIT 5");
+        const [businessMagnates] = await sampDbPool.query("SELECT u.username as player, COUNT(b.id) as business_count FROM businesses b JOIN users u ON b.ownerid = u.id WHERE b.ownerid != 0 GROUP BY u.username ORDER BY business_count DESC LIMIT 5");
+        
+        res.json({
+            topMiners,
+            topTruckers,
+            businessMagnates
+        });
+    } catch (error) {
+        console.error("SQL Get Player Archetypes Error:", error);
+        res.status(500).json({ message: "Failed to fetch player archetypes." });
+    }
+});
+
 // --- SERVER AND CRON JOB START ---
 Promise.all([connectToMongo(), connectToSampDb()]).then(() => {
     app.use('/api', factionRoutes(sampDbPool));
