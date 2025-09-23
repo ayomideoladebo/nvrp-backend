@@ -45,7 +45,7 @@ app.get('/api/economy/all-stats', async (req, res) => {
     }
     
     try {
-        const playerStats = await safeQuery("SELECT COUNT(*) FROM users as totalPlayers, (SELECT COUNT(*) FROM users WHERE is_online = 1) as playersToday FROM users");
+        const playerStats = await safeQuery("SELECT COUNT(*) as totalPlayers FROM users, (SELECT COUNT(*) FROM users WHERE is_online = 1) as playersToday FROM users");
         const wealthStats = await safeQuery("SELECT username, (cash + bank) as total_wealth FROM users ORDER BY total_wealth DESC LIMIT 1");
         const assetValues = await safeQuery(`
             SELECT 
