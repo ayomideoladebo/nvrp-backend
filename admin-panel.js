@@ -3,14 +3,14 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 
 const app = express();
-// Use a different port to avoid conflicts with your main server.js
+// We'll run this on a different port to avoid conflicts with your main server.js
 const PORT = process.env.PORT || 3002; 
 
 app.use(cors());
 app.use(express.json());
 
 // --- Database Connection ---
-// Ensure these credentials are correct for your SA-MP database
+// I've used the credentials from your uploaded db.json file
 const dbConfig = {
     host: '217.182.175.212',
     user: 'u3225914_Ur9bu1nnxG',
@@ -55,7 +55,7 @@ app.get('/api/economy/all-stats', async (req, res) => {
                     (SELECT SUM(price) FROM houses WHERE ownerid != -1) as houses,
                     (SELECT SUM(price) FROM businesses WHERE ownerid != 0) as businesses
             `),
-            sampDbPool.query("SELECT model, COUNT(*) as count FROM vehicles WHERE price > 50000 AND owner != '' GROUP BY model ORDER BY count DESC LIMIT 5"),
+            sampDbPool.query("SELECT modelid, COUNT(*) as count FROM vehicles WHERE price > 50000 AND owner != '' GROUP BY modelid ORDER BY count DESC LIMIT 5"),
             sampDbPool.query("SELECT COUNT(*) as count FROM users"),
             sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%MINING%' GROUP BY player ORDER BY total DESC LIMIT 5"),
             sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%DELIVERY%' GROUP BY player ORDER BY total DESC LIMIT 5"),
@@ -115,11 +115,10 @@ async function startServer() {
         console.log('Successfully connected to the SA-MP database.');
         
         app.listen(PORT, () => {
-            console.log(`Economy dashboard backend is running on https://rcon-nvrp-backend.onrender.com:${PORT}`);
+            console.log(`Economy dashboard backend is running on http://localhost:${PORT}`);
         });
     } catch (error) {
         console.error('Failed to connect to the SA-MP database:', error);
-        // Exit if we can't connect to the DB on startup
         process.exit(1); 
     }
 }
