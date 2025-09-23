@@ -766,7 +766,7 @@ app.get('/api/admin-panel/stats', async (req, res) => {
             sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%MINING%' GROUP BY player ORDER BY total DESC LIMIT 5"),
             sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%DELIVERY%' GROUP BY player ORDER BY total DESC LIMIT 5"),
             sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%COURIER%' GROUP BY player ORDER BY total DESC LIMIT 5"),
-            sampDbPool.query("SELECT u.username as player, COUNT(b.id) as business_count FROM businesses b JOIN users u ON b.ownerid = u.id WHERE b.ownerid != 0 GROUP BY u.username ORDER BY business_count DESC LIMIT 5"),
+            sampDbPool.query("SELECT username as player, COUNT(id) as business_count FROM businesses JOIN users ON ownerid = id WHERE ownerid != 0 GROUP BY username ORDER BY business_count DESC LIMIT 5"),
             sampDbPool.query("SELECT username, (cash + bank) as wealth, playtime FROM users ORDER BY wealth DESC, playtime ASC LIMIT 5"),
             sampDbPool.query("SELECT username, (cash + bank) as wealth, playtime FROM users ORDER BY playtime DESC, wealth ASC LIMIT 5")
         ]);
