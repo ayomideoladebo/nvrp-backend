@@ -733,43 +733,64 @@ app.get('/api/property-logs', async (req, res) => {
     }
 });
 
-// --- NEW ADVANCED ECONOMY ENDPOINTS ---
+// --- NEW, PACKED ECONOMY & ASSET DASHBOARD ENDPOINTS ---
 
-app.get('/api/economy/asset-distribution', async (req, res) => {
+app.get('/api/economy/advanced-stats', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "DB not connected." });
+    
     try {
+        // --- Asset Market Analysis ---
         const [playerWealth] = await sampDbPool.query("SELECT SUM(cash) as totalCash, SUM(bank) as totalBank FROM users");
-        const [vehicleValue] = await sampDbPool.query("SELECT SUM(price) as totalValue FROM vehicles WHERE owner != ''");
+        const [vehicleValue] = await sampDbPool.query("SELECT SUM(price) as totalValue FROM vehicles WHERE owner != '' AND price > 0");
         const [houseValue] = await sampDbPool.query("SELECT SUM(price) as totalValue FROM houses WHERE ownerid != -1");
         const [businessValue] = await sampDbPool.query("SELECT SUM(price) as totalValue FROM businesses WHERE ownerid != 0");
+        const [topVehicles] = await sampDbPool.query("SELECT model, COUNT(*) as count FROM vehicles WHERE price > 50000 AND owner != '' GROUP BY model ORDER BY count DESC LIMIT 5");
 
-        res.json({
-            playerLiquid: (parseInt(playerWealth[0].totalCash) || 0) + (parseInt(playerWealth[0].totalBank) || 0),
-            vehicles: parseInt(vehicleValue[0].totalValue) || 0,
-            houses: parseInt(houseValue[0].totalValue) || 0,
-            businesses: parseInt(businessValue[0].totalValue) || 0,
-        });
-    } catch (error) {
-        console.error("SQL Get Asset Distribution Error:", error);
-        res.status(500).json({ message: "Failed to fetch asset distribution." });
-    }
-});
-
-app.get('/api/economy/player-archetypes', async (req, res) => {
-    if (!sampDbPool) return res.status(503).json({ message: "DB not connected." });
-    try {
-        const [topMiners] = await sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' ', 1) as player, SUM(CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(description, 'got paid ', -1), ' ', 1) AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%MINING%' GROUP BY player ORDER BY total DESC LIMIT 5");
-        const [topTruckers] = await sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' ', 1) as player, SUM(CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(description, 'got paid ', -1), ' ', 1) AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%DELIVERY%' GROUP BY player ORDER BY total DESC LIMIT 5");
-        const [businessMagnates] = await sampDbPool.query("SELECT u.username as player, COUNT(b.id) as business_count FROM businesses b JOIN users u ON b.ownerid = u.id WHERE b.ownerid != 0 GROUP BY u.username ORDER BY business_count DESC LIMIT 5");
+        // --- Wealth Inequality ---
+        const [totalPlayersResult] = await sampDbPool.query("SELECT COUNT(*) as count FROM users");
+        const totalPlayers = totalPlayersResult[0].count;
+        const top10PercentCount = Math.ceil(totalPlayers * 0.1);
         
+        const [top10PercentWealth] = await sampDbPool.query("SELECT SUM(cash + bank) as topWealth FROM (SELECT cash, bank FROM users ORDER BY (cash + bank) DESC LIMIT ?) as top_users", [top10PercentCount]);
+        const [totalWealthResult] = await sampDbPool.query("SELECT SUM(cash + bank) as totalWealth FROM users");
+        
+        const assetInequality = {
+            top10PercentTotal: top10PercentWealth[0].topWealth || 0,
+            serverTotal: totalWealthResult[0].totalWealth || 0
+        };
+
+        // --- Player Archetypes ---
+        // Corrected queries to extract player names properly
+        const [topMiners] = await sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%MINING%' GROUP BY player ORDER BY total DESC LIMIT 5");
+        const [topTruckers] = await sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%DELIVERY%' GROUP BY player ORDER BY total DESC LIMIT 5");
+        const [topCouriers] = await sampDbPool.query("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_job WHERE description LIKE '%COURIER%' GROUP BY player ORDER BY total DESC LIMIT 5");
+        const [businessMagnates] = await sampDbPool.query("SELECT u.username as player, COUNT(b.id) as business_count FROM businesses b JOIN users u ON b.ownerid = u.id WHERE b.ownerid != 0 GROUP BY u.username ORDER BY business_count DESC LIMIT 5");
+        const [highRollers] = await sampDbPool.query("SELECT username, (cash + bank) as wealth, playtime FROM users ORDER BY wealth DESC, playtime ASC LIMIT 5");
+        const [grinders] = await sampDbPool.query("SELECT username, (cash + bank) as wealth, playtime FROM users ORDER BY playtime DESC, wealth ASC LIMIT 5");
+
         res.json({
-            topMiners,
-            topTruckers,
-            businessMagnates
+            assetDistribution: {
+                playerLiquid: (parseInt(playerWealth[0].totalCash) || 0) + (parseInt(playerWealth[0].totalBank) || 0),
+                vehicles: parseInt(vehicleValue[0].totalValue) || 0,
+                houses: parseInt(houseValue[0].totalValue) || 0,
+                businesses: parseInt(businessValue[0].totalValue) || 0,
+            },
+            endGameAssets: {
+                topVehicles
+            },
+            assetInequality,
+            playerArchetypes: {
+                topMiners,
+                topTruckers,
+                topCouriers,
+                businessMagnates,
+                highRollers,
+                grinders
+            }
         });
     } catch (error) {
-        console.error("SQL Get Player Archetypes Error:", error);
-        res.status(500).json({ message: "Failed to fetch player archetypes." });
+        console.error("SQL Get Advanced Economy Error:", error);
+        res.status(500).json({ message: "Failed to fetch advanced economy stats." });
     }
 });
 
