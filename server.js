@@ -733,9 +733,9 @@ app.get('/api/property-logs', async (req, res) => {
     }
 });
 
-// --- REBUILT & EXPANDED ECONOMY DASHBOARD ENDPOINTS ---
-// This single endpoint powers the entire economy dashboard for efficiency.
-app.get('/api/dashboard/all-stats', async (req, res) => {
+// --- REBUILT & EXPANDED ADMIN PANEL SQL ENDPOINTS ---
+// This single endpoint powers all the new cards on the admin panel.
+app.get('/api/admin-panel/stats', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "DB not connected." });
     
     try {
