@@ -63,8 +63,8 @@ app.get('/api/economy/all-stats', async (req, res) => {
         const top10PercentWealth = await safeQuery("SELECT SUM(cash + bank) as topWealth FROM (SELECT cash, bank FROM users ORDER BY (cash + bank) DESC LIMIT ?) as top_users", [top10PercentCount]);
         
         const topMiners = await safeQuery("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_jobs WHERE description LIKE '%MINING%' GROUP BY player ORDER BY total DESC LIMIT 5");
-        const topTruckers = await safeQuery("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_jobs WHERE description LIKE '%DELIVERY%' GROUP BY player ORDER BY total DESC LIMIT 5");
-        const topCouriers = await safeQuery("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_jobs WHERE description LIKE '%COURIER%' GROUP BY player ORDER BY total DESC LIMIT 5");
+        const topFarmers = await safeQuery("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_jobs WHERE description LIKE '%FARMING%' GROUP BY player ORDER BY total DESC LIMIT 5");
+        const topMeatChopper = await safeQuery("SELECT SUBSTRING_INDEX(description, ' got paid', 1) as player, SUM(CAST(REGEXP_SUBSTR(description, '[0-9]+') AS UNSIGNED)) as total FROM log_jobs WHERE description LIKE '%MEAT CHOPPING%' GROUP BY player ORDER BY total DESC LIMIT 5");
         const businessMagnates = await safeQuery("SELECT u.username as player, COUNT(b.id) as business_count FROM businesses b JOIN users u ON b.ownerid = u.id WHERE b.ownerid != 0 GROUP BY u.username ORDER BY business_count DESC LIMIT 5");
         const highRollers = await safeQuery("SELECT username, (cash + bank) as wealth, hours FROM users ORDER BY wealth DESC, hours ASC LIMIT 5");
         const grinders = await safeQuery("SELECT username, (cash + bank) as wealth, hours FROM users ORDER BY hours DESC, wealth ASC LIMIT 5");
@@ -91,8 +91,8 @@ app.get('/api/economy/all-stats', async (req, res) => {
             },
             playerArchetypes: {
                 topMiners,
-                topTruckers,
-                topCouriers,
+                topFarmers,
+                topMeatChopper,
                 businessMagnates,
                 highRollers,
                 grinders
