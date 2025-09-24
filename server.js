@@ -293,7 +293,7 @@ app.get('/api/player-route/:username', async (req, res) => {
 
         // Now, get all locations for that player_id from the last 15 minutes, in order
         const [route] = await sampDbPool.query(
-            "SELECT pos_x, pos_y FROM players_location WHERE player_id = ? AND timestamp > NOW() - INTERVAL 15 MINUTES ORDER BY timestamp ASC",
+            "SELECT pos_x, pos_y FROM players_location WHERE player_id = ? AND timestamp > NOW() - INTERVAL 1 HOUR ORDER BY timestamp ASC",
             [playerId]
         );
 
