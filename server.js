@@ -230,67 +230,47 @@ app.get('/api/all-players', async (req, res) => {
     }
 });
 
-// app.get('/api/player-locations', async (req, res) => {
-//     if (!sampDbPool) {
-//         return res.status(503).json({ message: "Game database is not connected." });
-//     }
-//     try {
-//         const [rows] = await sampDbPool.query("SELECT `username`, `pos_x`, `pos_y`, `is_online`, `faction` FROM `users`");
-//         res.json(rows);
-//     } catch (error) {
-//         console.error("MySQL Get Player Locations Error:", error);
-//         res.status(500).json({ message: "Failed to fetch player locations." });
-//     }
-// });
-
-app.get('/api/map-data', async (req, res) => {
+app.get('/api/player-locations', async (req, res) => {
+    if (!sampDbPool) {
+        return res.status(503).json({ message: "Game database is not connected." });
+    }
     try {
-        // Use your existing database connection pool
-        const connection = await pool.getConnection();
+        const [rows] = await sampDbPool.query("SELECT `username`, `pos_x`, `pos_y`, `is_online`, `faction` FROM `users`");
+        res.json(rows);
+    } catch (error) {
+        console.error("MySQL Get Player Locations Error:", error);
+        res.status(500).json({ message: "Failed to fetch player locations." });
+    }
+});
 
-        // Query 1: Get the LATEST location for each player
-        // This query joins the users table with the latest location from players_location
-        const [players] = await connection.query(`
-            SELECT
-                u.id,
-                u.username,
-                u.faction,
-                u.is_online,
-                pl.pos_x,
-                pl.pos_y
-            FROM
-                users u
-            JOIN
-                players_location pl ON u.id = pl.player_id
-            JOIN
-                (SELECT player_id, MAX(timestamp) AS max_timestamp
-                 FROM players_location GROUP BY player_id) AS latest
-            ON
-                pl.player_id = latest.player_id AND pl.timestamp = latest.max_timestamp
-        `);
+// Add this new endpoint to your server.js
+// This will work alongside your existing /api/player-locations
 
-        // Query 2: Get all houses
-        const [houses] = await connection.query(
+app.get('/api/properties', async (req, res) => {
+    // Make sure to use your game database connection pool
+    if (!sampDbPool) {
+        return res.status(503).json({ message: "Game database is not connected." });
+    }
+    try {
+        // Query 1: Get all houses
+        const [houses] = await sampDbPool.query(
             "SELECT id, owner, price, ownerid, pos_x, pos_y, pos_z FROM houses"
         );
 
-        // Query 3: Get all businesses
-        const [businesses] = await connection.query(
+        // Query 2: Get all businesses
+        const [businesses] = await sampDbPool.query(
             "SELECT id, owner, type, price, ownerid, name, pos_x, pos_y, pos_z, cash FROM businesses"
         );
 
-        connection.release();
-
-        // Combine all data into a single response object
+        // Combine into a single response object
         res.json({
-            players: players,
-            houses: houses.map(h => ({ ...h, is_owned: h.ownerid !== 0 })), // Add a clean boolean
-            businesses: businesses.map(b => ({ ...b, is_owned: b.ownerid !== 0 })) // Add a clean boolean
+            houses: houses.map(h => ({ ...h, is_owned: h.ownerid !== 0 })),
+            businesses: businesses.map(b => ({ ...b, is_owned: b.ownerid !== 0 }))
         });
 
     } catch (error) {
-        console.error('Error fetching map data:', error);
-        res.status(500).send('Server error');
+        console.error("MySQL Get Properties Error:", error);
+        res.status(500).json({ message: "Failed to fetch properties." });
     }
 });
 
