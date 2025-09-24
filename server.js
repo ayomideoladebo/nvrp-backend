@@ -289,11 +289,11 @@ app.get('/api/player-route/:username', async (req, res) => {
         if (users.length === 0) {
             return res.status(404).json({ message: "Player not found." });
         }
-        const playerId = users[0].id;
+        const playerId = users[0].uid;
 
-        // Now, get all locations for that player_id from the last 15 minutes, in order
+        // Now, get all locations for that player_id from the last 2 hours, in order
         const [route] = await sampDbPool.query(
-            "SELECT pos_x, pos_y FROM player_locations WHERE player_id = ? AND timestamp > NOW() - INTERVAL 1 HOUR ORDER BY timestamp ASC",
+            "SELECT pos_x, pos_y FROM player_locations WHERE player_id = ? AND timestamp > NOW() - INTERVAL 2 HOUR ORDER BY timestamp ASC",
             [playerId]
         );
 
