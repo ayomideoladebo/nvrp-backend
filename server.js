@@ -274,6 +274,37 @@ app.get('/api/properties', async (req, res) => {
     }
 });
 
+// Add this new endpoint to your server.js for the route replay feature
+
+app.get('/api/player-route/:username', async (req, res) => {
+    if (!sampDbPool) {
+        return res.status(503).json({ message: "Game database is not connected." });
+    }
+    try {
+        const username = req.params.username;
+
+        // First, we need to get the player's SQL ID from their username
+        const [users] = await sampDbPool.query("SELECT `id` FROM `users` WHERE `username` = ?", [username]);
+
+        if (users.length === 0) {
+            return res.status(404).json({ message: "Player not found." });
+        }
+        const playerId = users[0].id;
+
+        // Now, get all locations for that player_id from the last 15 minutes, in order
+        const [route] = await sampDbPool.query(
+            "SELECT pos_x, pos_y FROM players_location WHERE player_id = ? AND timestamp > NOW() - INTERVAL 15 MINUTES ORDER BY timestamp ASC",
+            [playerId]
+        );
+
+        res.json(route);
+
+    } catch (error) {
+        console.error("MySQL Get Player Route Error:", error);
+        res.status(500).json({ message: "Failed to fetch player route." });
+    }
+});
+
 app.get('/api/all-players-list', async (req, res) => {
     if (!sampDbPool) return res.status(503).json({ message: "Game database is not connected." });
     try {
