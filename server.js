@@ -284,7 +284,7 @@ app.get('/api/player-route/:username', async (req, res) => {
         const username = req.params.username;
 
         // First, we need to get the player's SQL ID from their username
-        const [users] = await sampDbPool.query("SELECT `id` FROM `users` WHERE `username` = ?", [username]);
+        const [users] = await sampDbPool.query("SELECT `uid` FROM `users` WHERE `username` = ?", [username]);
 
         if (users.length === 0) {
             return res.status(404).json({ message: "Player not found." });
