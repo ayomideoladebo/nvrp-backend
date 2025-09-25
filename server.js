@@ -479,8 +479,7 @@ app.post('/api/gemini-analysis', async (req, res) => {
     if (!playerStats || typeof playerStats.avgHours === 'undefined' || typeof playerStats.maxHours === 'undefined' || typeof playerStats.online === 'undefined') {
         return res.json({ prediction: "N/A", explanation: "Missing or incomplete player statistics.", rawPrediction: 0 });
     }
-
-    // --- Factor Calculations ---
+-
 
         // 1. Recent Circulation Trend (Weight: 40%) - Directly uses percentage change
     const latestCirculation = circulationHistory[circulationHistory.length - 1].total_circulation;
