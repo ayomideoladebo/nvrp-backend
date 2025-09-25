@@ -520,7 +520,7 @@ App.post('/api/gemini-analysis', async (req, res) => {
 
     // 4. Player Retention & Growth (Weight: 15%)
     const newPlayersToday = await db.collection('waitlist').countDocuments({ date: { $gte: new Date(new Date() - 24 * 60 * 60 * 1000) } });
-    const [quitLogs] = await sampDbPool.query("SELECT COUNT(*) as quitCount FROM log_quits WHERE created_at >= NOW() - INTERVAL 24 HOUR");
+    const [quitLogs] = await sampDbPool.query("SELECT COUNT(*) as quitCount FROM paycheck_logs WHERE created_at >= NOW() - INTERVAL 24 HOUR");
     const playersQuitToday = quitLogs[0].quitCount;
 
     // A simple Net Player Flow. Target a net gain.
