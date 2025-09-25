@@ -472,125 +472,71 @@ app.get('/api/economy-stats', async (req, res) => {
 app.post('/api/gemini-analysis', async (req, res) => {
     const { circulationHistory, playerStats } = req.body;
 
-    // --- Input Validation ---
     if (!circulationHistory || circulationHistory.length < 2) {
-        return res.json({ prediction: "N/A", explanation: "Insufficient historical circulation data (need at least 2 points for trend).", rawPrediction: 0 });
-    }
-    if (!playerStats || typeof playerStats.avgHours === 'undefined' || typeof playerStats.maxHours === 'undefined' || typeof playerStats.online === 'undefined') {
-        return res.json({ prediction: "N/A", explanation: "Missing or incomplete player statistics.", rawPrediction: 0 });
+        return res.json({ prediction: 0, explanation: "Not enough data for a prediction." });
     }
 
-        // 1. Recent Circulation Trend (Weight: 40%) - Directly uses percentage change
+    // --- Enhanced Factors ---
+    // 1. Recent Circulation Trend (Weight: 40%)
     const latestCirculation = circulationHistory[circulationHistory.length - 1].total_circulation;
     const previousCirculation = circulationHistory[circulationHistory.length - 2].total_circulation;
-
-    let circulationFactor = 0;
-    let circulationChangePercent = 0;
-
     if (previousCirculation === 0) {
-        if (latestCirculation > 0) {
-            // Huge growth from zero (e.g., first entry, or after a full reset)
-            circulationChangePercent = 22; // Representing a massive, uncapped positive change
-            circulationFactor = 100;
-        } else {
-            // Both zero or negative, no change or still at zero
-            circulationChangePercent = 0;
-            circulationFactor = 0;
-        }
-    } else {
-        // Standard percentage change calculation for non-zero previous circulation
-        circulationChangePercent = ((latestCirculation - previousCirculation) / previousCirculation) * 100;
-        circulationFactor = circulationChangePercent;
+        return res.json({ prediction: 0, explanation: "Cannot calculate prediction due to zero previous circulation." });
     }
-    // Now, circulationFactor will correctly hold the actual percentage change
-    // And circulationChangePercent will be used for the explanation
-
+    const circulationChange = (latestCirculation - previousCirculation) / previousCirculation;
 
     // 2. Player Engagement Score (Weight: 20%)
-    // Aim for -10 to +10 contribution based on engagement
-    const engagementBaselineHours = 50; // Hours considered "good" engagement
-    const engagementMaxInfluenceHours = 200; // Hours where engagement factor maxes out
-    const engagementScore = Math.min(1, playerStats.avgHours / engagementBaselineHours) - 0.5; // Centers around 0 for avgHours = baseline
-    const scaledEngagementFactor = engagementScore * 20; // Scale to contribute +/- 10%
-    
-    // Make very low engagement (e.g., avgHours < 10) have a stronger negative pull
-    if (playerStats.avgHours < 10) {
-        scaledEngagementFactor -= (10 - playerStats.avgHours) * 0.5; // Further penalize by 0.5% for each hour below 10
-    }
+    const engagementRatio = (playerStats.avgHours / (playerStats.maxHours || 1));
+    const engagementScore = (engagementRatio - 0.5) * 0.1;
 
     // 3. Current Activity Level (Weight: 15%)
-    // Aim for -10 to +10 contribution based on online players
-    const idealOnlinePlayers = 50; // What you consider an "ideal" online count for full positive contribution
-    const maxOnlineInfluence = 100; // Cap the positive influence
-    let activityFactor = ((playerStats.online / idealOnlinePlayers) - 1) * 15; // Centered around 0 for idealOnlinePlayers
-    activityFactor = Math.min(activityFactor, 10); // Cap positive contribution
-    activityFactor = Math.max(activityFactor, -20); // Allow stronger negative pull for very low online players
+    const activityLevel = (playerStats.online / 100) * 0.05;
 
     // 4. Job Market Health (Weight: 15%)
-    // Aim for -10 to +10 contribution based on recent payouts
     const [jobLogs] = await sampDbPool.query("SELECT description, created_at FROM log_jobs WHERE created_at >= NOW() - INTERVAL 24 HOUR");
     const recentPayouts = jobLogs.reduce((sum, log) => {
         const match = log.description.match(/got paid (\d+)/);
         return sum + (match ? parseInt(match[1], 10) : 0);
     }, 0);
-
-    const targetPayouts = 500000; // Amount of payouts considered healthy
-    let jobMarketFactor = ((recentPayouts / targetPayouts) - 0.5) * 20; // Scale to contribute +/- 10%
-    jobMarketFactor = Math.min(jobMarketFactor, 10); // Cap positive
-    jobMarketFactor = Math.max(jobMarketFactor, -15); // Allow stronger negative for very low payouts
-
+    const jobMarketFactor = (recentPayouts / 1000000) * 0.02; // 2% boost for every ₦1,000,000 in payouts
 
     // 5. Player Acquisition Rate (Weight: 5%)
-    // Aim for -5 to +5 contribution based on new players
     const newPlayersToday = await db.collection('waitlist').countDocuments({ date: { $gte: new Date(new Date() - 24 * 60 * 60 * 1000) } });
-    const targetNewPlayers = 10; // What you consider a good number of new players
-    let acquisitionFactor = ((newPlayersToday / targetNewPlayers) - 0.5) * 10; // Scale to contribute +/- 5%
-    acquisitionFactor = Math.min(acquisitionFactor, 5); // Cap positive
-    acquisitionFactor = Math.max(acquisitionFactor, -10); // Allow stronger negative if no new players
-
+    const acquisitionFactor = (newPlayersToday / 50) * 0.01; // 1% boost for every 50 new players
 
     // 6. Donation Velocity (Weight: 5%)
-    // Aim for -5 to +5 contribution based on donations
     const recentDonations = await db.collection('donations').find({ date: { $gte: new Date(new Date() - 24 * 60 * 60 * 1000) } }).toArray();
     const totalDonationAmount = recentDonations.reduce((sum, donation) => sum + parseInt(donation.price.replace(/[^0-9]/g, ''), 10), 0);
-    const targetDonationAmount = 20000; // What you consider a good donation amount
-    let donationFactor = ((totalDonationAmount / targetDonationAmount) - 0.5) * 10; // Scale to contribute +/- 5%
-    donationFactor = Math.min(donationFactor, 5); // Cap positive
-    donationFactor = Math.max(donationFactor, -5); // Max negative (lack of donations is bad, but not catastrophic)
+    const donationFactor = (totalDonationAmount / 50000) * 0.01; // 1% boost for every ₦50,000 in donations
 
-
-    // --- Prediction Calculation (Weighted Sum) ---
-    // Weights sum to 100% implicitly by scaling factors to desired percentage contribution
-    const prediction = (circulationFactor * 0.40) +          // Up to +/- X% directly
-                       (scaledEngagementFactor * 0.20) +      // Up to +/- 10%
-                       (activityFactor * 0.15) +              // Up to +/- 10% (more negative)
-                       (jobMarketFactor * 0.15) +             // Up to +/- 10% (more negative)
-                       (acquisitionFactor * 0.05) +           // Up to +/- 5% (more negative)
-                       (donationFactor * 0.05);               // Up to +/- 5%
-
-
-    // --- Explanation Generation ---
+    // --- Prediction Calculation (Weighted) ---
+    const prediction = (circulationChange * 100 * 0.4) + 
+                       (engagementScore * 100 * 0.2) + 
+                       (activityLevel * 100 * 0.15) +
+                       (jobMarketFactor * 100 * 0.15) +
+                       (acquisitionFactor * 100 * 0.05) +
+                       (donationFactor * 100 * 0.05);
+    
     const explanation = `
-        This simulated prediction forecasts the next 24-hour change in total circulation by analyzing several dynamic server metrics.
+        This simulated prediction is based on a weighted analysis of key server metrics:
         ---
-        **Economic Trend (40% Impact):** The total money in circulation has changed by **${circulationChangePercent.toFixed(2)}%** in the last 24 hours. This is the primary driver of the prediction.
+        **Economic Trend (40%):** The total money in circulation changed by ${(circulationChange * 100).toFixed(2)}% in the last 24 hours.
         ---
-        **Player Engagement (20% Impact):** An average playtime of **${playerStats.avgHours.toFixed(1)} hours** indicates player dedication. This factor contributes **${scaledEngagementFactor.toFixed(2)}%** to the prediction.
+        **Player Engagement (20%):** The average player has ${playerStats.avgHours} hours logged, indicating a dedicated player base. This contributes a ${(engagementScore * 100).toFixed(2)}% adjustment.
         ---
-        **Current Activity (15% Impact):** With **${playerStats.online} players** currently active, this reflects immediate server health, contributing **${activityFactor.toFixed(2)}%** to the prediction.
+        **Player Activity (15%):** With ${playerStats.online} players currently active, the server's immediate health adjusts the prediction by ${(activityLevel * 100).toFixed(2)}% adjustment.
         ---
-        **Job Market Health (15% Impact):** A total of **₦${recentPayouts.toLocaleString()}** was paid out from jobs in the last 24 hours, indicating economic flow. This factor contributes **${jobMarketFactor.toFixed(2)}%** to the prediction.
+        **Job Market (15%):** A total of ₦${recentPayouts.toLocaleString()} was paid out from jobs in the last 24 hours, adding a ${(jobMarketFactor * 100).toFixed(2)}% boost.
         ---
-        **Growth Momentum (5% Impact):** **${newPlayersToday} new players** applied in the last 24 hours. New player acquisition contributes **${acquisitionFactor.toFixed(2)}%** to the prediction.
+        **Growth (5%):** ${newPlayersToday} new players have applied in the last 24 hours, resulting in a ${(acquisitionFactor * 100).toFixed(2)}% adjustment.
         ---
-        **Community Investment (5% Impact):** Recent donations totaling **₦${totalDonationAmount.toLocaleString()}** signal community support and contribute **${donationFactor.toFixed(2)}%** to the prediction.
+        **Community Investment (5%):** Recent donations totaling ₦${totalDonationAmount.toLocaleString()} provide a ${(donationFactor * 100).toFixed(2)}% indicator of positive sentiment.
         ---
-        **Overall:** Combining these weighted factors, the model predicts a **${prediction.toFixed(2)}%** change in total server circulation over the next 24 hours.
+        Combining these factors results in a simulated prediction of a ${prediction.toFixed(2)}% change in total circulation over the next 24 hours.
     `;
 
-    res.json({ prediction: prediction.toFixed(2), explanation, rawPrediction: prediction });
+    res.json({ prediction: prediction.toFixed(2), explanation });
 });
-
 
 app.get('/api/events', async (req, res) => {
     if (!sampDbPool) { return res.status(503).json({ message: "Game database is not connected." }); }
