@@ -482,26 +482,31 @@ App.post('/api/gemini-analysis', async (req, res) => {
 
     // --- Factor Calculations ---
 
-    // 1. Recent Circulation Trend (Weight: 40%) - Directly uses percentage change
+        // 1. Recent Circulation Trend (Weight: 40%) - Directly uses percentage change
     const latestCirculation = circulationHistory[circulationHistory.length - 1].total_circulation;
     const previousCirculation = circulationHistory[circulationHistory.length - 2].total_circulation;
 
     let circulationFactor = 0;
     let circulationChangePercent = 0;
 
-    if (previousCirculation !== 0) {
-        circulationChangePercent = ((latestCirculation - previousCirculation) / previousCirculation) * 100;
-        // This factor directly scales with the change.
-        circulationFactor = circulationChangePercent;
-    } else if (latestCirculation > 0) {
-        // If previous was zero but current is positive, it's a huge positive trend (e.g., server reset)
-        circulationFactor = 100; // Arbitrary high positive for massive growth from zero
-        circulationChangePercent = 100;
+    if (previousCirculation === 0) {
+        if (latestCirculation > 0) {
+            // Huge growth from zero (e.g., first entry, or after a full reset)
+            circulationChangePercent = 100; // Representing a massive, uncapped positive change
+            circulationFactor = 100;
+        } else {
+            // Both zero or negative, no change or still at zero
+            circulationChangePercent = 0;
+            circulationFactor = 0;
+        }
     } else {
-        // Both zero or negative
-        circulationFactor = 0;
-        circulationChangePercent = 0;
+        // Standard percentage change calculation for non-zero previous circulation
+        circulationChangePercent = ((latestCirculation - previousCirculation) / previousCirculation) * 100;
+        circulationFactor = circulationChangePercent;
     }
+    // Now, circulationFactor will correctly hold the actual percentage change
+    // And circulationChangePercent will be used for the explanation
+
 
     // 2. Player Engagement Score (Weight: 20%)
     // Aim for -10 to +10 contribution based on engagement
